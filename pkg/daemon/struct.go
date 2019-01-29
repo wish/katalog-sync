@@ -13,11 +13,11 @@ import (
 
 var (
 	// Annotation names
-	ConsulServiceNames        = "katalog-sync.wish.com/service-names"
-	ConsulServicePort         = "katalog-sync.wish.com/service-port"
-	ConsulServicePortOverride = "katalog-sync.wish.com/service-port-"
-	ConsulServiceTags         = "katalog-sync.wish.com/service-tags"
-	SidecarName               = "katalog-sync.wish.com/sidecar"
+	ConsulServiceNames        = "katalog-sync.wish.com/service-names"     // comma-separated list of service names
+	ConsulServicePort         = "katalog-sync.wish.com/service-port"      // port to use for consul entry
+	ConsulServicePortOverride = "katalog-sync.wish.com/service-port-"     // port override to use for a specific service name
+	ConsulServiceTags         = "katalog-sync.wish.com/service-tags"      // tags for the service
+	SidecarName               = "katalog-sync.wish.com/sidecar"           // Name of sidecar container, only to be set if it exists
 	SyncInterval              = "katalog-sync.wish.com/sync-interval"     // How frequently we want to sync this service
 	ConsulServiceCheckTTL     = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
 )
