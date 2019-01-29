@@ -131,6 +131,12 @@ func (d *Daemon) Run() error {
 	retChans := make([]chan error, 0)
 
 	doSync := func() error {
+		defer func() {
+			sleepTime := d.calculateSleepTime()
+			logrus.Infof("sleeping for %s", sleepTime)
+			timer = time.NewTimer(sleepTime)
+			lastRun = time.Now()
+		}()
 		// Load initial state from k8s
 		if err := d.fetchK8s(); err != nil {
 			return err
@@ -141,10 +147,6 @@ func (d *Daemon) Run() error {
 			return err
 		}
 
-		sleepTime := d.calculateSleepTime()
-		logrus.Infof("sleeping for %s", sleepTime)
-		timer = time.NewTimer(sleepTime)
-		lastRun = time.Now()
 		return nil
 	}
 
