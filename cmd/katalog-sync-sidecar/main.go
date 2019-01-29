@@ -17,6 +17,7 @@ import (
 
 // TODO: consul flags
 var opts struct {
+	LogLevel            string `long:"log-level" description:"Log level" default:"info"`
 	KatalogSyncEndpoint string `long:"katalog-sync-daemon" description:"katalog-sync-daemon API endpoint"`
 	BindAddr            string `long:"bind-address" description:"address for binding checks to"`
 
@@ -35,6 +36,19 @@ func main() {
 		}
 		logrus.Fatalf("Error parsing flags: %v", err)
 	}
+
+	// Use log level
+	level, err := logrus.ParseLevel(opts.LogLevel)
+	if err != nil {
+		logrus.Fatalf("Unknown log level %s: %v", opts.LogLevel, err)
+	}
+	logrus.SetLevel(level)
+
+	// Set the log format to have a reasonable timestamp
+	formatter := &logrus.TextFormatter{
+		FullTimestamp: true,
+	}
+	logrus.SetFormatter(formatter)
 
 	var ready bool
 

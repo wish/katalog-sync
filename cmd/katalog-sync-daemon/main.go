@@ -15,6 +15,7 @@ import (
 
 // TODO: consul flags
 var opts struct {
+	LogLevel string `long:"log-level" description:"Log level" default:"info"`
 	BindAddr string `long:"bind-address" description:"address for binding RPC interface for sidecar"`
 	daemon.DaemonConfig
 	daemon.KubeletClientConfig
@@ -30,6 +31,19 @@ func main() {
 		}
 		logrus.Fatalf("Error parsing flags: %v", err)
 	}
+
+	// Use log level
+	level, err := logrus.ParseLevel(opts.LogLevel)
+	if err != nil {
+		logrus.Fatalf("Unknown log level %s: %v", opts.LogLevel, err)
+	}
+	logrus.SetLevel(level)
+
+	// Set the log format to have a reasonable timestamp
+	formatter := &logrus.TextFormatter{
+		FullTimestamp: true,
+	}
+	logrus.SetFormatter(formatter)
 
 	kubeletClient, err := daemon.NewKubeletClient(opts.KubeletClientConfig)
 	if err != nil {
