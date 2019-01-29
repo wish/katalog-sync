@@ -1,62 +1,42 @@
-{
-  "apiVersion": "extensions/v1beta1",
-  "kind": "Deployment",
-  "metadata": {
-    "name": "hw",
-    "namespace": "hw",
-    "labels": {
-      "app": "hw"
-    }
-  },
-  "spec": {
-    "replicas": 2,
-    "selector": {
-      "matchLabels": {
-        "app": "hw"
-      }
-    },
-    "template": {
-      "metadata": {
-        "labels": {
-          "app": "hw"
-        },
-        "annotations": {
-           "katalog-sync.wish.com/service-names": "hw-service-name,servicename2",
-           "katalog-sync.wish.com/service-port": "8080",
-           "katalog-sync.wish.com/service-tags": "a,b",
-           "katalog-sync.wish.com/sync-interval": "2s"
-        }
-      },
-      "spec": {
-        "terminationGracePeriodSeconds": 1,
-        "containers": [
-          {
-            "name": "hw",
-            "image": "smcquay/hw:v0.1.5",
-            "imagePullPolicy": "Always",
-            "ports": [
-              {
-                "containerPort": 8080
-              }
-            ],
-            "livenessProbe": {
-              "httpGet": {
-                "path": "/live",
-                "port": 8080
-              },
-              "initialDelaySeconds": 5,
-              "periodSeconds": 5
-            },
-            "readinessProbe": {
-              "httpGet": {
-                "path": "/ready",
-                "port": 8080
-              },
-              "periodSeconds": 5
-            }
-          }
-        ]
-      }
-    }
-  }
-}
+---
+apiVersion: extensions/v1beta1
+kind: Deployment
+metadata:
+  name: hw
+  namespace: hw
+  labels:
+    app: hw
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: hw
+  template:
+    metadata:
+      labels:
+        app: hw
+      annotations:
+        katalog-sync.wish.com/service-names: hw-service-name,servicename2
+        katalog-sync.wish.com/service-port: '8080'
+        katalog-sync.wish.com/service-tags: a,b
+        katalog-sync.wish.com/sync-interval: 2s
+    spec:
+      terminationGracePeriodSeconds: 1
+      containers:
+      - name: hw
+        image: smcquay/hw:v0.1.5
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: "/live"
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: "/ready"
+            port: 8080
+          periodSeconds: 5
+
