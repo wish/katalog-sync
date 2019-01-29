@@ -53,6 +53,18 @@
   branch = "release-1.10"
   name = "k8s.io/api"
 
+[[constraint]]
+  version = "v10.0.0"
+  name = "k8s.io/client-go"
+
+[[override]]
+  name = "k8s.io/api"
+  version = "kubernetes-1.13.0"
+
+[[override]]
+  name = "k8s.io/apimachinery"
+  version = "kubernetes-1.13.0"
+
 [prune]
   go-tests = true
   unused-packages = true

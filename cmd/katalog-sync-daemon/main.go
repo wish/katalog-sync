@@ -15,9 +15,9 @@ import (
 
 // TODO: consul flags
 var opts struct {
-	KubeletAPIEndpoint string `long:"kubelet-api" description:"kubelet API endpoint" default:"http://localhost:10255/pods"`
-	BindAddr           string `long:"bind-address" description:"address for binding RPC interface for sidecar"`
+	BindAddr string `long:"bind-address" description:"address for binding RPC interface for sidecar"`
 	daemon.DaemonConfig
+	daemon.KubeletClientConfig
 }
 
 func main() {
@@ -31,7 +31,10 @@ func main() {
 		logrus.Fatalf("Error parsing flags: %v", err)
 	}
 
-	kubeletClient := daemon.NewKubeletClient(opts.KubeletAPIEndpoint)
+	kubeletClient, err := daemon.NewKubeletClient(opts.KubeletClientConfig)
+	if err != nil {
+		logrus.Fatalf("Unable to create kubelet client: %v", err)
+	}
 
 	// Consul testing
 	consulCfg := consulApi.DefaultConfig()
