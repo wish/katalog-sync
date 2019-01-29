@@ -1,0 +1,65 @@
+---
+{
+   "apiVersion": "extensions/v1beta1",
+   "kind": "DaemonSet",
+   "metadata": {
+      "labels": {
+         "k8s-app": "katalog-sync"
+      },
+      "name": "katalog-sync",
+      "namespace": "kube-system"
+   },
+   "spec": {
+      "selector": {
+         "matchLabels": {
+            "k8s-app": "katalog-sync"
+         }
+      },
+      "template": {
+         "metadata": {
+            "annotations": {
+               "scheduler.alpha.kubernetes.io/critical-pod": ""
+            },
+            "labels": {
+               "k8s-app": "katalog-sync"
+            }
+         },
+         "spec": {
+            "containers": [
+               {
+                  "command": [
+                    "/bin/katalog-sync-daemon"
+                  ],
+                  "args": [
+                    "--bind-address=:8889",
+                  ],
+                  "env": [
+                     {
+                        "name": "POD_IP",
+                        "valueFrom": {
+                           "fieldRef": {
+                              "fieldPath": "status.hostIP"
+                           }
+                        }
+                     }
+                  ],
+                  "image": "quay.io/wish/katalog-sync:latest",
+                  "imagePullPolicy": "Always",
+                  "name": "katalog-sync-daemon"
+               }
+            ],
+            "hostNetwork": true,
+            "terminationGracePeriodSeconds": 5,
+            "tolerations": [
+               {
+                  "key": "CriticalAddonsOnly",
+                  "operator": "Exists"
+               }
+            ]
+         }
+      },
+      "updateStrategy": {
+         "type": "RollingUpdate"
+      }
+   }
+}

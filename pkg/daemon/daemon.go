@@ -1,0 +1,253 @@
+package daemon
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"time"
+
+	consulApi "github.com/hashicorp/consul/api"
+	"github.com/sirupsen/logrus"
+
+	katalogsync "github.com/wish/katalog-sync/proto"
+)
+
+var (
+	ConsulSyncSourceName  = "external-sync-source"
+	ConsulSyncSourceValue = "katalog-sync"
+	ConsulK8sLinkName     = "external-k8s-link"
+)
+
+type DaemonConfig struct {
+	MinSyncInterval     time.Duration `long:"min-sync-interval" description:"minimum duration allowed for sync" default:"500ms"`
+	MaxSyncInterval     time.Duration `long:"max-sync-interval" description:"maximum duration allowed for sync" default:"5s"`
+	DefaultSyncInterval time.Duration `long:"default-sync-interval" default:"1s"`
+	DefaultCheckTTL     time.Duration `long:"default-check-ttl" default:"10s"`
+	SyncTTLBuffer       time.Duration `long:"sync-ttl-buffer-duration" description:"how much time to ensure is between sync time and ttl" default:"10s"`
+}
+
+func NewDaemon(c DaemonConfig, k8sClient Kubelet, consulClient ConsulAgent) *Daemon {
+	return &Daemon{
+		c:            c,
+		k8sClient:    k8sClient,
+		consulClient: consulClient,
+
+		localK8sState: make(map[string]*Pod),
+	}
+}
+
+// Daemon is responsible for syncing state from k8s -> consul
+type Daemon struct {
+	c DaemonConfig
+
+	k8sClient    Kubelet
+	consulClient ConsulAgent
+
+	// TODO: locks around this? or move everything through a channel
+	// Our local representation of what pods are running
+	localK8sState map[string]*Pod
+}
+
+func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*katalogsync.RegisterResult, error) {
+	// TODO trigger sync
+	time.Sleep(time.Millisecond * 200)
+
+	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
+	pod, ok := d.localK8sState[k]
+	if !ok {
+		return nil, fmt.Errorf("Unable to find pod: %s", k)
+	}
+
+	pod.SidecarState.SidecarName = in.ContainerName
+	pod.SidecarState.Ready = true
+
+	// TODO trigger sync
+	time.Sleep(time.Millisecond * 200)
+
+	if ready, _ := pod.Ready(); ready {
+		return nil, nil
+	} else {
+		return nil, fmt.Errorf("not ready!: %v", pod.SyncStatuses.GetError())
+	}
+}
+
+func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery) (*katalogsync.DeregisterResult, error) {
+	// TODO trigger sync
+	time.Sleep(time.Millisecond * 200)
+
+	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
+	pod, ok := d.localK8sState[k]
+	if !ok {
+		return nil, fmt.Errorf("Unable to find pod: %s", k)
+	}
+
+	pod.SidecarState.Ready = false
+
+	// TODO trigger sync
+	time.Sleep(time.Millisecond * 200)
+
+	if ready, _ := pod.Ready(); !ready {
+		return nil, nil
+	} else {
+		return nil, fmt.Errorf("ready!: %v", pod.SyncStatuses.GetError())
+	}
+}
+
+func (d *Daemon) calculateSleepTime() time.Duration {
+	sleepDuration := d.c.MaxSyncInterval
+	for _, pod := range d.localK8sState {
+		if pod.SyncInterval < sleepDuration && pod.SyncInterval > d.c.MinSyncInterval {
+			sleepDuration = pod.SyncInterval
+		}
+	}
+	return sleepDuration
+}
+
+// TODO: refactor into a start/stop/run job (so initial sync is done on start, and the rest in background goroutine)
+func (d *Daemon) Run() error {
+
+	for {
+
+		// Load initial state from k8s
+		if err := d.fetchK8s(); err != nil {
+			return err
+		}
+
+		// Do initial sync
+		if err := d.syncConsul(); err != nil {
+			return err
+		}
+		sleepTime := d.calculateSleepTime()
+		logrus.Infof("sleeping for %s", sleepTime)
+		time.Sleep(sleepTime)
+	}
+
+	// Loop forever running the update job
+
+	return nil
+
+}
+
+// fetchK8s is responsible for updating the local k8sState with what we pull
+// from our k8sClient
+func (d *Daemon) fetchK8s() error {
+	podList, err := d.k8sClient.GetPodList()
+	if err != nil {
+		return err
+	}
+
+	// Add/Update the ones we have
+	newKeys := make(map[string]struct{})
+	for _, pod := range podList.Items {
+		// If the pod doesn't have a service-name defined, we don't touch it
+		if _, ok := pod.ObjectMeta.Annotations[ConsulServiceNames]; !ok {
+			continue
+		}
+
+		// If the pod isn't in the "Running" phase, we skip
+		if pod.Status.Phase != "Running" {
+			continue
+		}
+
+		key := pod.ObjectMeta.SelfLink
+		newKeys[key] = struct{}{}
+		if existingPod, ok := d.localK8sState[key]; ok {
+			existingPod.UpdatePod(pod)
+		} else {
+			p, err := NewPod(pod, &d.c)
+			if err != nil {
+				logrus.Errorf("error creating local state for pod: %v", err)
+			} else {
+				d.localK8sState[key] = p
+			}
+		}
+	}
+
+	// remove any local ones that don't exist anymore
+	for k := range d.localK8sState {
+		if _, ok := newKeys[k]; !ok {
+			delete(d.localK8sState, k)
+		}
+	}
+
+	return nil
+}
+
+// syncConsul is responsible for syncing local state to consul
+func (d *Daemon) syncConsul() error {
+	// Get services from consul
+	consulServices, err := d.consulClient.Services()
+	if err != nil {
+		return err
+	}
+
+	// TODO: split out update, for now we'll just re-register it all
+	// Push/Update from local state
+	for _, pod := range d.localK8sState {
+		ready, containerReadiness := pod.Ready()
+
+		status := "critical"
+		if ready {
+			status = "passing"
+		}
+
+		notesB, err := json.MarshalIndent(containerReadiness, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+
+		for _, serviceName := range pod.GetServiceNames() {
+			// If the service exists, then we just need to update
+			if consulService, ok := consulServices[pod.GetServiceID(serviceName)]; ok && !pod.HasChange(consulService) {
+				// only call update if we are past halflife of last update
+				if pod.SyncStatuses.GetStatus(serviceName).LastUpdated.IsZero() || time.Now().Sub(pod.SyncStatuses.GetStatus(serviceName).LastUpdated) >= (pod.CheckTTL/2) {
+					// If the service already exists, just update the check
+					pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.UpdateTTL(pod.GetServiceID(serviceName), string(notesB), consulApi.HealthPassing))
+				}
+			} else {
+				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.ServiceRegister(&consulApi.AgentServiceRegistration{
+					ID:      pod.GetServiceID(serviceName),
+					Name:    serviceName,
+					Port:    pod.GetPort(), // TODO: error if missing? Or default to first found?
+					Address: pod.Status.PodIP,
+					Meta: map[string]string{ // TODO: have a tag here say katalog-sync?
+						"external-source":      "kubernetes",             // TODO: make this configurable?
+						"external-sync-source": "katalog-sync",           // TODO:: configurable?
+						"external-k8s-ns":      pod.ObjectMeta.Namespace, /// Lets put in what NS this came from
+						ConsulK8sLinkName:      pod.ObjectMeta.SelfLink,  // which includes full path to this (ns, pod name, etc.)
+						// TODO: other annotations that get mapped here
+					},
+					Tags: pod.GetTags(),
+
+					// TODO: proxy through to us (or sidecar?) for local pod state
+					Check: &consulApi.AgentServiceCheck{
+						CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path
+						TTL:     pod.CheckTTL.String(),
+
+						Status: status,         // Current status of check
+						Notes:  string(notesB), // Map of container->ready
+					},
+				}))
+			}
+		}
+	}
+
+	// Delete old ones
+	for _, consulService := range consulServices {
+		// We skip all services we aren't syncing (in case others are also registering agent services)
+		if v, ok := consulService.Meta[ConsulSyncSourceName]; !ok || v != ConsulSyncSourceValue {
+			continue
+		}
+
+		// If the service exists, skip
+		if pod, ok := d.localK8sState[consulService.Meta[ConsulK8sLinkName]]; ok && pod.HasServiceName(consulService.Service) {
+			continue
+		}
+
+		if err := d.consulClient.ServiceDeregister(consulService.ID); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

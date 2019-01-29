@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package katalogsync;
+
+
+service KatalogSync {
+    rpc Register(RegisterQuery) returns (RegisterResult);
+    rpc Deregister(DeregisterQuery) returns (DeregisterResult);
+}
+
+message RegisterQuery {
+    string Namespace = 1;
+    string PodName = 2;
+    string ContainerName = 3;
+}
+
+message RegisterResult {
+
+}
+
+message DeregisterQuery {
+    string Namespace = 1;
+    string PodName = 2;
+    string ContainerName = 3;
+}
+
+message DeregisterResult {
+
+}

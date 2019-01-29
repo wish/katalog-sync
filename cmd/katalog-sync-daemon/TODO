@@ -1,0 +1,17 @@
+TODO:
+- make "check" mode configurable
+- default annotation values as config on daemonset
+    -- sync interval
+
+
+annotations TO add:
+    - sidecar required (don't update state unless told by sidecar)
+        -- maybe as a "mode" flag?
+    - check sync interval
+    - 
+
+
+?
+    - can we "watch" API changes from kubelet?
+        -- not today, so we'll have to poll and do the updates ourselves
+    - 

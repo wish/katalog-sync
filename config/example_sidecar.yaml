@@ -1,0 +1,99 @@
+{
+  "apiVersion": "extensions/v1beta1",
+  "kind": "Deployment",
+  "metadata": {
+    "name": "hw",
+    "namespace": "hw",
+    "labels": {
+      "app": "hw"
+    }
+  },
+  "spec": {
+    "replicas": 2,
+    "selector": {
+      "matchLabels": {
+        "app": "hw"
+      }
+    },
+    "template": {
+      "metadata": {
+        "labels": {
+          "app": "hw"
+        },
+        "annotations": {
+           "katalog-sync.wish.com/sidecar": "katalog-sync-sidecar",
+           "katalog-sync.wish.com/service-names": "hw-service-name,servicename2",
+           "katalog-sync.wish.com/service-port": "8080",
+           "katalog-sync.wish.com/service-tags": "a,b",
+           "katalog-sync.wish.com/sync-interval": "2s"
+        }
+      },
+      "spec": {
+        "terminationGracePeriodSeconds": 1,
+        "containers": [
+          {
+            "name": "hw",
+            "image": "smcquay/hw:v0.1.5",
+            "imagePullPolicy": "Always",
+            "ports": [
+              {
+                "containerPort": 8080
+              }
+            ],
+            "livenessProbe": {
+              "httpGet": {
+                "path": "/live",
+                "port": 8080
+              },
+              "initialDelaySeconds": 5,
+              "periodSeconds": 5
+            },
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/ready",
+                "port": 8080
+              },
+              "periodSeconds": 5
+            }
+          },
+          {
+            "command": [
+              "/bin/katalog-sync-sidecar"
+            ],
+            "args": [
+              "--katalog-sync-daemon=10.10.205.186:8889",
+              "--namespace=$(MY_POD_NAMESPACE)",
+              "--pod-name=$(MY_POD_NAME)",
+              "--container-name=katalog-sync-sidecar",
+              "--bind-address=:8888"
+            ],
+            "env": [
+              {
+                "name": "MY_POD_NAMESPACE",
+                "valueFrom": {
+                  "fieldRef": {"fieldPath": "metadata.namespace"}
+                }
+              },
+              {
+                "name": "MY_POD_NAME",
+                "valueFrom": {
+                  "fieldRef": {"fieldPath": "metadata.name"}
+                }
+              }
+            ],
+            "image": "quay.io/wish/katalog-sync:latest",
+            "imagePullPolicy": "Always",
+            "name": "katalog-sync-sidecar",
+            "readinessProbe": {
+              "httpGet": {
+                "path": "/ready",
+                "port": 8888
+              },
+              "periodSeconds": 5
+            }
+          }
+        ]
+      }
+    }
+  }
+}
