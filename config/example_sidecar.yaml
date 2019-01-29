@@ -95,6 +95,7 @@
                 "path": "/ready",
                 "port": 8888
               },
+              "initialDelaySeconds": 1,
               "periodSeconds": 5
             }
           }

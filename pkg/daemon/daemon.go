@@ -33,6 +33,7 @@ func NewDaemon(c DaemonConfig, k8sClient Kubelet, consulClient ConsulAgent) *Dae
 		consulClient: consulClient,
 
 		localK8sState: make(map[string]*Pod),
+		syncCh:        make(chan chan error),
 	}
 }
 
@@ -46,11 +47,27 @@ type Daemon struct {
 	// TODO: locks around this? or move everything through a channel
 	// Our local representation of what pods are running
 	localK8sState map[string]*Pod
+
+	syncCh chan chan error
+}
+
+func (d *Daemon) doSync(ctx context.Context) error {
+	ch := make(chan error, 1)
+
+	// Trigger a sync
+	d.syncCh <- ch
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case err := <-ch:
+		return err
+	}
 }
 
 func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*katalogsync.RegisterResult, error) {
-	// TODO trigger sync
-	time.Sleep(time.Millisecond * 200)
+	if err := d.doSync(ctx); err != nil {
+		return nil, err
+	}
 
 	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
 	pod, ok := d.localK8sState[k]
@@ -61,8 +78,9 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 	pod.SidecarState.SidecarName = in.ContainerName
 	pod.SidecarState.Ready = true
 
-	// TODO trigger sync
-	time.Sleep(time.Millisecond * 200)
+	if err := d.doSync(ctx); err != nil {
+		return nil, err
+	}
 
 	if ready, _ := pod.Ready(); ready {
 		return nil, nil
@@ -72,8 +90,9 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 }
 
 func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery) (*katalogsync.DeregisterResult, error) {
-	// TODO trigger sync
-	time.Sleep(time.Millisecond * 200)
+	if err := d.doSync(ctx); err != nil {
+		return nil, err
+	}
 
 	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
 	pod, ok := d.localK8sState[k]
@@ -83,8 +102,9 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 
 	pod.SidecarState.Ready = false
 
-	// TODO trigger sync
-	time.Sleep(time.Millisecond * 200)
+	if err := d.doSync(ctx); err != nil {
+		return nil, err
+	}
 
 	if ready, _ := pod.Ready(); !ready {
 		return nil, nil
@@ -105,9 +125,12 @@ func (d *Daemon) calculateSleepTime() time.Duration {
 
 // TODO: refactor into a start/stop/run job (so initial sync is done on start, and the rest in background goroutine)
 func (d *Daemon) Run() error {
+	timer := time.NewTimer(0)
+	var lastRun time.Time
 
-	for {
+	retChans := make([]chan error, 0)
 
+	doSync := func() error {
 		// Load initial state from k8s
 		if err := d.fetchK8s(); err != nil {
 			return err
@@ -117,15 +140,41 @@ func (d *Daemon) Run() error {
 		if err := d.syncConsul(); err != nil {
 			return err
 		}
+
 		sleepTime := d.calculateSleepTime()
 		logrus.Infof("sleeping for %s", sleepTime)
-		time.Sleep(sleepTime)
+		timer = time.NewTimer(sleepTime)
+		lastRun = time.Now()
+		return nil
 	}
 
 	// Loop forever running the update job
+	for {
+		select {
+		// If the timer went off, then we need to do a sync
+		case <-timer.C:
+			err := doSync()
+			for _, ch := range retChans {
+				select {
+				case ch <- err:
+				default:
+				}
+			}
+			retChans = retChans[:]
+
+		// If we got a channel on the syncCh then we need to add it to our list
+		case ch := <-d.syncCh:
+			retChans = append(retChans, ch)
+			if time.Now().Sub(lastRun) > d.c.MinSyncInterval {
+				if !timer.Stop() {
+					<-timer.C
+				}
+				timer.Reset(0)
+			}
+		}
+	}
 
 	return nil
-
 }
 
 // fetchK8s is responsible for updating the local k8sState with what we pull
