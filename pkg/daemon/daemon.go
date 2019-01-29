@@ -153,7 +153,9 @@ func (d *Daemon) Run() error {
 		select {
 		// If the timer went off, then we need to do a sync
 		case <-timer.C:
+			start := time.Now()
 			err := doSync()
+			logrus.Infof("Sync completed in %s: %v", time.Now().Sub(start), err)
 			for _, ch := range retChans {
 				select {
 				case ch <- err:
