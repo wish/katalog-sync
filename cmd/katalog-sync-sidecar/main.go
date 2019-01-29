@@ -15,7 +15,6 @@ import (
 	katalogsync "github.com/wish/katalog-sync/proto"
 )
 
-// TODO: consul flags
 var opts struct {
 	LogLevel            string `long:"log-level" description:"Log level" default:"info"`
 	KatalogSyncEndpoint string `long:"katalog-sync-daemon" description:"katalog-sync-daemon API endpoint"`
