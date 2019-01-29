@@ -259,7 +259,7 @@ func (d *Daemon) syncConsul() error {
 				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.ServiceRegister(&consulApi.AgentServiceRegistration{
 					ID:      pod.GetServiceID(serviceName),
 					Name:    serviceName,
-					Port:    pod.GetPort(), // TODO: error if missing? Or default to first found?
+					Port:    pod.GetPort(serviceName), // TODO: error if missing? Or default to first found?
 					Address: pod.Status.PodIP,
 					Meta: map[string]string{ // TODO: have a tag here say katalog-sync?
 						"external-source":      "kubernetes",             // TODO: make this configurable?

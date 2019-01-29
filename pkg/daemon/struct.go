@@ -13,12 +13,13 @@ import (
 
 var (
 	// Annotation names
-	ConsulServiceNames    = "katalog-sync.wish.com/service-names"
-	ConsulServicePort     = "katalog-sync.wish.com/service-port"
-	ConsulServiceTags     = "katalog-sync.wish.com/service-tags"
-	SidecarName           = "katalog-sync.wish.com/sidecar"
-	SyncInterval          = "katalog-sync.wish.com/sync-interval"     // How frequently we want to sync this service
-	ConsulServiceCheckTTL = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
+	ConsulServiceNames        = "katalog-sync.wish.com/service-names"
+	ConsulServicePort         = "katalog-sync.wish.com/service-port"
+	ConsulServicePortOverride = "katalog-sync.wish.com/service-port-"
+	ConsulServiceTags         = "katalog-sync.wish.com/service-tags"
+	SidecarName               = "katalog-sync.wish.com/sidecar"
+	SyncInterval              = "katalog-sync.wish.com/sync-interval"     // How frequently we want to sync this service
+	ConsulServiceCheckTTL     = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
 )
 
 func NewPod(pod k8sApi.Pod, dc *DaemonConfig) (*Pod, error) {
@@ -130,7 +131,16 @@ func (p *Pod) GetTags() []string {
 	return strings.Split(p.Pod.ObjectMeta.Annotations[ConsulServiceTags], ",")
 }
 
-func (p *Pod) GetPort() int {
+func (p *Pod) GetPort(n string) int {
+	if portStr, ok := p.Pod.ObjectMeta.Annotations[ConsulServicePortOverride+n]; ok {
+		port, err := strconv.Atoi(portStr)
+		if err == nil {
+			return port
+		} else {
+			logrus.Errorf("Unable to parse port from annotation %s: %v", portStr, err)
+		}
+	}
+
 	// First we look for a port in an annotation
 	if portStr, ok := p.Pod.ObjectMeta.Annotations[ConsulServicePort]; ok {
 		port, err := strconv.Atoi(portStr)
