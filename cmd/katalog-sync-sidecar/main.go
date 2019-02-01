@@ -104,8 +104,18 @@ WAITLOOP:
 		}
 	}
 
+	go func() {
+		<-sigs
+		cancel()
+	}()
+
 	// Send deregister request
 	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
 		logrus.Infof("deregister attempt")
 		_, err := client.Deregister(ctx, &katalogsync.DeregisterQuery{Namespace: opts.Namespace, PodName: opts.PodName, ContainerName: opts.ContainerName})
 		if err == nil {
