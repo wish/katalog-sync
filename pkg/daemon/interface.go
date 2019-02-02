@@ -9,6 +9,10 @@ type Kubelet interface {
 	GetPodList() (*k8sApi.PodList, error)
 }
 
+type ConsulCatalog interface {
+	Services() (map[string]*consulApi.AgentService, error)
+}
+
 type ConsulAgent interface {
 	UpdateTTL(checkID, output, status string) error
 	Services() (map[string]*consulApi.AgentService, error)

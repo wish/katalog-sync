@@ -7,6 +7,7 @@ import (
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	katalogsync "github.com/wish/katalog-sync/proto"
@@ -26,7 +27,7 @@ type DaemonConfig struct {
 	SyncTTLBuffer       time.Duration `long:"sync-ttl-buffer-duration" description:"how much time to ensure is between sync time and ttl" default:"10s"`
 }
 
-func NewDaemon(c DaemonConfig, k8sClient Kubelet, consulClient ConsulAgent) *Daemon {
+func NewDaemon(c DaemonConfig, k8sClient Kubelet, consulClient *consulApi.Client) *Daemon {
 	return &Daemon{
 		c:            c,
 		k8sClient:    k8sClient,
@@ -42,7 +43,7 @@ type Daemon struct {
 	c DaemonConfig
 
 	k8sClient    Kubelet
-	consulClient ConsulAgent
+	consulClient *consulApi.Client
 
 	// TODO: locks around this? or move everything through a channel
 	// Our local representation of what pods are running
@@ -82,6 +83,39 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 		return nil, err
 	}
 
+	if err := pod.SyncStatuses.GetError(); err != nil {
+		return nil, errors.Wrap(err, "Unable to sync status")
+	}
+
+	// TODO: optional through a flag in RegisterQuery
+	// The goal here is to ensure that the registration has propogated to the rest of the cluster
+	nodeName, _ := d.consulClient.Agent().NodeName()
+	opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
+SYNC_WAIT:
+	for {
+		// If the client is no longer waiting, lets stop checking
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+		node, m, err := d.consulClient.Catalog().Node(nodeName, opts)
+		if err != nil {
+			return nil, err
+		}
+		opts.WaitIndex = m.LastIndex
+		synced := true
+		for _, serviceName := range pod.GetServiceNames() {
+			// If the service exists, then we just need to update
+			if _, ok := node.Services[pod.GetServiceID(serviceName)]; !ok {
+				synced = false
+			}
+		}
+		if synced {
+			break SYNC_WAIT
+		}
+	}
+
 	if ready, _ := pod.Ready(); ready {
 		return nil, nil
 	} else {
@@ -104,6 +138,39 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 
 	if err := d.doSync(ctx); err != nil {
 		return nil, err
+	}
+
+	if err := pod.SyncStatuses.GetError(); err != nil {
+		return nil, errors.Wrap(err, "Unable to sync status")
+	}
+
+	// TODO: optional through a flag in DeregisterQuery
+	// The goal here is to ensure that the deregistration has propogated to the rest of the cluster
+	nodeName, _ := d.consulClient.Agent().NodeName()
+	opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
+SYNC_WAIT:
+	for {
+		// If the client is no longer waiting, lets stop checking
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		default:
+		}
+		node, m, err := d.consulClient.Catalog().Node(nodeName, opts)
+		if err != nil {
+			return nil, err
+		}
+		opts.WaitIndex = m.LastIndex
+		synced := true
+		for _, serviceName := range pod.GetServiceNames() {
+			// If the service exists, then we just need to update
+			if _, ok := node.Services[pod.GetServiceID(serviceName)]; ok {
+				synced = false
+			}
+		}
+		if synced {
+			break SYNC_WAIT
+		}
 	}
 
 	if ready, _ := pod.Ready(); !ready {
@@ -229,7 +296,7 @@ func (d *Daemon) fetchK8s() error {
 // syncConsul is responsible for syncing local state to consul
 func (d *Daemon) syncConsul() error {
 	// Get services from consul
-	consulServices, err := d.consulClient.Services()
+	consulServices, err := d.consulClient.Agent().Services()
 	if err != nil {
 		return err
 	}
@@ -255,10 +322,10 @@ func (d *Daemon) syncConsul() error {
 				// only call update if we are past halflife of last update
 				if pod.SyncStatuses.GetStatus(serviceName).LastUpdated.IsZero() || time.Now().Sub(pod.SyncStatuses.GetStatus(serviceName).LastUpdated) >= (pod.CheckTTL/2) {
 					// If the service already exists, just update the check
-					pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.UpdateTTL(pod.GetServiceID(serviceName), string(notesB), consulApi.HealthPassing))
+					pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().UpdateTTL(pod.GetServiceID(serviceName), string(notesB), consulApi.HealthPassing))
 				}
 			} else {
-				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.ServiceRegister(&consulApi.AgentServiceRegistration{
+				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().ServiceRegister(&consulApi.AgentServiceRegistration{
 					ID:      pod.GetServiceID(serviceName),
 					Name:    serviceName,
 					Port:    pod.GetPort(serviceName), // TODO: error if missing? Or default to first found?
@@ -297,7 +364,7 @@ func (d *Daemon) syncConsul() error {
 			continue
 		}
 
-		if err := d.consulClient.ServiceDeregister(consulService.ID); err != nil {
+		if err := d.consulClient.Agent().ServiceDeregister(consulService.ID); err != nil {
 			return err
 		}
 	}
