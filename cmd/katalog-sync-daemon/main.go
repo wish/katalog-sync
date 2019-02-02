@@ -57,7 +57,7 @@ func main() {
 		panic(err)
 	}
 
-	d := daemon.NewDaemon(opts.DaemonConfig, kubeletClient, client.Agent())
+	d := daemon.NewDaemon(opts.DaemonConfig, kubeletClient, client)
 
 	if opts.BindAddr != "" {
 		s := grpc.NewServer()
