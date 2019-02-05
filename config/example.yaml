@@ -19,6 +19,7 @@ spec:
         katalog-sync.wish.com/service-names: hw-service-name,servicename2
         katalog-sync.wish.com/service-port: '8080'
         katalog-sync.wish.com/service-tags: a,b
+        katalog-sync.wish.com/service-tags-servicename2: b,c
         katalog-sync.wish.com/sync-interval: 2s
     spec:
       terminationGracePeriodSeconds: 1
