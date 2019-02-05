@@ -319,7 +319,7 @@ func (d *Daemon) syncConsul() error {
 						ConsulK8sLinkName:      pod.ObjectMeta.SelfLink,  // which includes full path to this (ns, pod name, etc.)
 						// TODO: other annotations that get mapped here
 					},
-					Tags: pod.GetTags(),
+					Tags: pod.GetTags(serviceName),
 
 					// TODO: proxy through to us (or sidecar?) for local pod state
 					Check: &consulApi.AgentServiceCheck{
