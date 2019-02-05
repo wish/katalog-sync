@@ -76,6 +76,10 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 		return nil, fmt.Errorf("Unable to find pod: %s", k)
 	}
 
+	if pod.SidecarState == nil {
+		return nil, fmt.Errorf("Pod is missing annotation %s for sidecar", SidecarName)
+	}
+
 	pod.SidecarState.SidecarName = in.ContainerName
 	pod.SidecarState.Ready = true
 
@@ -123,6 +127,10 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 	pod, ok := d.localK8sState[k]
 	if !ok {
 		return nil, fmt.Errorf("Unable to find pod: %s", k)
+	}
+
+	if pod.SidecarState == nil {
+		return nil, fmt.Errorf("Pod is missing annotation %s for sidecar", SidecarName)
 	}
 
 	pod.SidecarState.Ready = false
