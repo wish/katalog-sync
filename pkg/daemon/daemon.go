@@ -89,21 +89,12 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 
 	// TODO: optional through a flag in RegisterQuery
 	// The goal here is to ensure that the registration has propogated to the rest of the cluster
-	nodeName, _ := d.consulClient.Agent().NodeName()
+	nodeName, err := d.consulClient.Agent().NodeName()
+	if err != nil {
+		return nil, err
+	}
 	opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
-SYNC_WAIT:
-	for {
-		// If the client is no longer waiting, lets stop checking
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-		node, m, err := d.consulClient.Catalog().Node(nodeName, opts)
-		if err != nil {
-			return nil, err
-		}
-		opts.WaitIndex = m.LastIndex
+	if err := d.ConsulNodeDoUntil(ctx, nodeName, opts, func(node *consulApi.CatalogNode) bool {
 		synced := true
 		for _, serviceName := range pod.GetServiceNames() {
 			// If the service exists, then we just need to update
@@ -111,9 +102,9 @@ SYNC_WAIT:
 				synced = false
 			}
 		}
-		if synced {
-			break SYNC_WAIT
-		}
+		return synced
+	}); err != nil {
+		return nil, err
 	}
 
 	if ready, _ := pod.Ready(); ready {
@@ -146,21 +137,12 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 
 	// TODO: optional through a flag in DeregisterQuery
 	// The goal here is to ensure that the deregistration has propogated to the rest of the cluster
-	nodeName, _ := d.consulClient.Agent().NodeName()
+	nodeName, err := d.consulClient.Agent().NodeName()
+	if err != nil {
+		return nil, err
+	}
 	opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
-SYNC_WAIT:
-	for {
-		// If the client is no longer waiting, lets stop checking
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		default:
-		}
-		node, m, err := d.consulClient.Catalog().Node(nodeName, opts)
-		if err != nil {
-			return nil, err
-		}
-		opts.WaitIndex = m.LastIndex
+	if err := d.ConsulNodeDoUntil(ctx, nodeName, opts, func(node *consulApi.CatalogNode) bool {
 		synced := true
 		for _, serviceName := range pod.GetServiceNames() {
 			// If the service exists, then we just need to update
@@ -168,9 +150,9 @@ SYNC_WAIT:
 				synced = false
 			}
 		}
-		if synced {
-			break SYNC_WAIT
-		}
+		return synced
+	}); err != nil {
+		return nil, err
 	}
 
 	if ready, _ := pod.Ready(); !ready {
@@ -370,4 +352,25 @@ func (d *Daemon) syncConsul() error {
 	}
 
 	return nil
+}
+
+type consulNodeFunc func(*consulApi.CatalogNode) bool
+
+func (d *Daemon) ConsulNodeDoUntil(ctx context.Context, nodeName string, opts *consulApi.QueryOptions, f consulNodeFunc) error {
+	for {
+		// If the client is no longer waiting, lets stop checking
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+		node, m, err := d.consulClient.Catalog().Node(nodeName, opts)
+		if err != nil {
+			return err
+		}
+		opts.WaitIndex = m.LastIndex
+		if f(node) {
+			return nil
+		}
+	}
 }
