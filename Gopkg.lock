@@ -125,6 +125,14 @@
   version = "1.0.1"
 
 [[projects]]
+  digest = "1:cf31692c14422fa27c83a05292eb5cbe0fb2775972e8f1f8446a71549bd8980b"
+  name = "github.com/pkg/errors"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "ba968bfe8b2f7e042a574c888954fccecfa385b4"
+  version = "v0.8.1"
+
+[[projects]]
   digest = "1:87c2e02fb01c27060ccc5ba7c5a407cc91147726f8f40b70cceeedbc52b1f3a8"
   name = "github.com/sirupsen/logrus"
   packages = ["."]
@@ -386,6 +394,7 @@
     "github.com/gogo/protobuf/proto",
     "github.com/hashicorp/consul/api",
     "github.com/jessevdk/go-flags",
+    "github.com/pkg/errors",
     "github.com/sirupsen/logrus",
     "golang.org/x/net/context",
     "google.golang.org/grpc",
