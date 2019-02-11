@@ -1,0 +1,33 @@
+{
+  "error": false,
+  "service_names": [
+    "hw-service-name",
+    "servicename2"
+  ],
+  "service_ids": {
+    "hw-service-name": "katalog-sync_hw-service-name_hw_hw-6f596c7944-5q5t7",
+    "servicename2": "katalog-sync_servicename2_hw_hw-6f596c7944-5q5t7"
+  },
+  "tags": {
+    "hw-service-name": [
+      "a",
+      "b"
+    ],
+    "servicename2": [
+      "b",
+      "c"
+    ]
+  },
+  "ports": {
+    "hw-service-name": 8080,
+    "servicename2": 12345
+  },
+  "ready": {
+    "hw-service-name": {
+      "hw": true
+    },
+    "servicename2": {
+      "hw": true
+    }
+  }
+}
