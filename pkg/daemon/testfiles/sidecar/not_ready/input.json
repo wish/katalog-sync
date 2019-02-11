@@ -1,0 +1,239 @@
+{
+	"metadata": {
+		"name": "hw-6f596c7944-5q5t7",
+		"generateName": "hw-6f596c7944-",
+		"namespace": "hw",
+		"selfLink": "/api/v1/namespaces/hw/pods/hw-6f596c7944-5q5t7",
+		"uid": "e9fedb18-2e56-11e9-8f72-54e1ad14ee37",
+		"resourceVersion": "6244",
+		"creationTimestamp": "2019-02-11T23:44:03Z",
+		"labels": {
+			"app": "hw",
+			"pod-template-hash": "6f596c7944"
+		},
+		"annotations": {
+			"katalog-sync.wish.com/service-names": "hw-service-name,servicename2",
+			"katalog-sync.wish.com/service-port": "8080",
+			"katalog-sync.wish.com/service-port-servicename2": "12345",
+			"katalog-sync.wish.com/service-tags": "a,b",
+			"katalog-sync.wish.com/service-tags-servicename2": "b,c",
+			"katalog-sync.wish.com/sidecar": "katalog-sync-sidecar",
+			"katalog-sync.wish.com/sync-interval": "2s",
+			"kubernetes.io/config.seen": "2019-02-11T15:44:03.945239692-08:00",
+			"kubernetes.io/config.source": "api"
+		},
+		"ownerReferences": [{
+			"apiVersion": "apps/v1",
+			"kind": "ReplicaSet",
+			"name": "hw-6f596c7944",
+			"uid": "e9f5926f-2e56-11e9-8f72-54e1ad14ee37",
+			"controller": true,
+			"blockOwnerDeletion": true
+		}]
+	},
+	"spec": {
+		"volumes": [{
+			"name": "default-token-zwnc6",
+			"secret": {
+				"secretName": "default-token-zwnc6",
+				"defaultMode": 420
+			}
+		}],
+		"containers": [{
+				"name": "hw",
+				"image": "smcquay/hw:v0.1.5",
+				"ports": [{
+					"containerPort": 8080,
+					"protocol": "TCP"
+				}],
+				"resources": {},
+				"volumeMounts": [{
+					"name": "default-token-zwnc6",
+					"readOnly": true,
+					"mountPath": "/var/run/secrets/kubernetes.io/serviceaccount"
+				}],
+				"livenessProbe": {
+					"httpGet": {
+						"path": "/live",
+						"port": 8080,
+						"scheme": "HTTP"
+					},
+					"initialDelaySeconds": 5,
+					"timeoutSeconds": 1,
+					"periodSeconds": 5,
+					"successThreshold": 1,
+					"failureThreshold": 3
+				},
+				"readinessProbe": {
+					"httpGet": {
+						"path": "/ready",
+						"port": 8080,
+						"scheme": "HTTP"
+					},
+					"timeoutSeconds": 1,
+					"periodSeconds": 5,
+					"successThreshold": 1,
+					"failureThreshold": 3
+				},
+				"terminationMessagePath": "/dev/termination-log",
+				"terminationMessagePolicy": "File",
+				"imagePullPolicy": "Always"
+			},
+			{
+				"name": "katalog-sync-sidecar",
+				"image": "quay.io/wish/katalog-sync:latest",
+				"command": [
+					"/bin/katalog-sync-sidecar"
+				],
+				"args": [
+					"--katalog-sync-daemon=$(HOST_IP):8501",
+					"--namespace=$(MY_POD_NAMESPACE)",
+					"--pod-name=$(MY_POD_NAME)",
+					"--container-name=katalog-sync-sidecar",
+					"--bind-address=:8888"
+				],
+				"env": [{
+						"name": "HOST_IP",
+						"valueFrom": {
+							"fieldRef": {
+								"apiVersion": "v1",
+								"fieldPath": "status.hostIP"
+							}
+						}
+					},
+					{
+						"name": "MY_POD_NAMESPACE",
+						"valueFrom": {
+							"fieldRef": {
+								"apiVersion": "v1",
+								"fieldPath": "metadata.namespace"
+							}
+						}
+					},
+					{
+						"name": "MY_POD_NAME",
+						"valueFrom": {
+							"fieldRef": {
+								"apiVersion": "v1",
+								"fieldPath": "metadata.name"
+							}
+						}
+					}
+				],
+				"resources": {},
+				"volumeMounts": [{
+					"name": "default-token-zwnc6",
+					"readOnly": true,
+					"mountPath": "/var/run/secrets/kubernetes.io/serviceaccount"
+				}],
+				"readinessProbe": {
+					"httpGet": {
+						"path": "/ready",
+						"port": 8888,
+						"scheme": "HTTP"
+					},
+					"initialDelaySeconds": 1,
+					"timeoutSeconds": 1,
+					"periodSeconds": 5,
+					"successThreshold": 1,
+					"failureThreshold": 3
+				},
+				"terminationMessagePath": "/dev/termination-log",
+				"terminationMessagePolicy": "File",
+				"imagePullPolicy": "Always"
+			}
+		],
+		"restartPolicy": "Always",
+		"terminationGracePeriodSeconds": 1,
+		"dnsPolicy": "ClusterFirst",
+		"serviceAccountName": "default",
+		"serviceAccount": "default",
+		"nodeName": "tjackson-thinkpad-x1-carbon-5th",
+		"securityContext": {},
+		"schedulerName": "default-scheduler",
+		"tolerations": [{
+				"key": "node.kubernetes.io/not-ready",
+				"operator": "Exists",
+				"effect": "NoExecute",
+				"tolerationSeconds": 300
+			},
+			{
+				"key": "node.kubernetes.io/unreachable",
+				"operator": "Exists",
+				"effect": "NoExecute",
+				"tolerationSeconds": 300
+			}
+		],
+		"priority": 0,
+		"enableServiceLinks": true
+	},
+	"status": {
+		"phase": "Running",
+		"conditions": [{
+				"type": "Initialized",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:44:03Z"
+			},
+			{
+				"type": "Ready",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:44:36Z"
+			},
+			{
+				"type": "ContainersReady",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:44:36Z"
+			},
+			{
+				"type": "PodScheduled",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:44:03Z"
+			}
+		],
+		"hostIP": "10.10.204.182",
+		"podIP": "10.1.1.137",
+		"startTime": "2019-02-11T23:44:03Z",
+		"containerStatuses": [{
+				"name": "hw",
+				"state": {
+					"running": {
+						"startedAt": "2019-02-11T23:44:08Z"
+					}
+				},
+				"lastState": {},
+				"ready": false,
+				"restartCount": 0,
+				"image": "smcquay/hw:v0.1.5",
+				"imageID": "docker-pullable://smcquay/hw@sha256:514233b4dfbe7b93b2ac07634dc964ab5b1d8318f0c35afe0882fdde6fb245f1",
+				"containerID": "docker://1eefaa0d929cabe94e5fb2d958ec1de7bbc9ec1a3033bac5c3ea01c1ad57a80b"
+			},
+			{
+				"name": "katalog-sync-sidecar",
+				"state": {
+					"running": {
+						"startedAt": "2019-02-11T23:44:30Z"
+					}
+				},
+				"lastState": {
+					"terminated": {
+						"exitCode": 2,
+						"reason": "Error",
+						"startedAt": "2019-02-11T23:44:15Z",
+						"finishedAt": "2019-02-11T23:44:15Z",
+						"containerID": "docker://b1367bda03e53ef2603a0fded0674d5a6954f3d1dd1fb3b7d2944079d7b6b907"
+					}
+				},
+				"ready": false,
+				"restartCount": 2,
+				"image": "quay.io/wish/katalog-sync:latest",
+				"imageID": "docker-pullable://quay.io/wish/katalog-sync@sha256:bd51bb5a8add2b2e1412ac2632b7f80309d8147a6bfceaa09f795e7f0d0ea7fc",
+				"containerID": "docker://20f432830594a531e20d8e712655a1c480094636f1082a453ab056c09ab6da57"
+			}
+		],
+		"qosClass": "BestEffort"
+	}
+}
