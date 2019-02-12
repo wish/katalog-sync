@@ -23,6 +23,7 @@ var (
 	ConsulServiceCheckTTL     = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
 )
 
+// NewPod returns a daemon pod based on a config and a k8s pod
 func NewPod(pod k8sApi.Pod, dc *DaemonConfig) (*Pod, error) {
 	var sidecarState *SidecarState
 	// If we have an annotation saying we have a sidecar, lets load it
@@ -84,7 +85,7 @@ func NewPod(pod k8sApi.Pod, dc *DaemonConfig) (*Pod, error) {
 
 }
 
-// Our representation of a pod in k8s
+// Pod is our representation of a pod in k8s
 type Pod struct {
 	k8sApi.Pod
 	*SidecarState
@@ -100,7 +101,7 @@ func (p *Pod) HasChange(service *consulApi.AgentService) bool {
 	return false
 }
 
-// GetID returns an identifier that addresses this pod.
+// GetServiceID returns an identifier that addresses this pod.
 func (p *Pod) GetServiceID(serviceName string) string {
 	// ServiceID is katalog-sync_service_namespace_pod
 	return strings.Join([]string{
@@ -111,14 +112,17 @@ func (p *Pod) GetServiceID(serviceName string) string {
 	}, "_")
 }
 
+// UpdatePod updates the k8s pod
 func (p *Pod) UpdatePod(k8sPod k8sApi.Pod) {
 	p.Pod = k8sPod
 }
 
+// GetServiceNames returns the list of service names defined in the k8s annotations
 func (p *Pod) GetServiceNames() []string {
 	return strings.Split(p.Pod.ObjectMeta.Annotations[ConsulServiceNames], ",")
 }
 
+// HasServiceName returns whether a given name is one of the annotated service names for this pod
 func (p *Pod) HasServiceName(n string) bool {
 	for _, name := range p.GetServiceNames() {
 		if name == n {
@@ -128,6 +132,8 @@ func (p *Pod) HasServiceName(n string) bool {
 	return false
 }
 
+// GetTags returns the tags for a given service for this pod
+// This first checks the service-specific tags, and falls back to the service-level tags
 func (p *Pod) GetTags(n string) []string {
 	if tagStr, ok := p.Pod.ObjectMeta.Annotations[ConsulServiceTagsOverride+n]; ok {
 		return strings.Split(tagStr, ",")
@@ -136,6 +142,8 @@ func (p *Pod) GetTags(n string) []string {
 	return strings.Split(p.Pod.ObjectMeta.Annotations[ConsulServiceTags], ",")
 }
 
+// GetPort returns the port for a given service for this pod
+// This first checks the service-specific port, and falls back to the service-level port
 func (p *Pod) GetPort(n string) int {
 	if portStr, ok := p.Pod.ObjectMeta.Annotations[ConsulServicePortOverride+n]; ok {
 		port, err := strconv.Atoi(portStr)
@@ -196,8 +204,10 @@ type SidecarState struct {
 	Ready       bool
 }
 
+// SyncStatuses is a map of SyncStatus for each service defined in a pod (serviceName -> *SyncStatus)
 type SyncStatuses map[string]*SyncStatus
 
+// GetStatus returns the SyncStatus for the given serviceName
 func (s SyncStatuses) GetStatus(n string) *SyncStatus {
 	status, ok := s[n]
 	if !ok {
@@ -207,6 +217,7 @@ func (s SyncStatuses) GetStatus(n string) *SyncStatus {
 	return status
 }
 
+// GetError returns the first error found in the set of SyncStatuses
 func (s SyncStatuses) GetError() error {
 	for _, status := range s {
 		if status.LastError != nil {
@@ -217,11 +228,13 @@ func (s SyncStatuses) GetError() error {
 	return nil
 }
 
+// SyncStatus encapsulates the result of the last sync attempt
 type SyncStatus struct {
 	LastUpdated time.Time
 	LastError   error
 }
 
+// SetError sets the error and LastUpdated time for the status
 func (s *SyncStatus) SetError(e error) {
 	s.LastError = e
 	s.LastUpdated = time.Now()

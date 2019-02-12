@@ -19,6 +19,7 @@ var (
 	ConsulK8sLinkName     = "external-k8s-link"
 )
 
+// DaemonConfig contains the configuration options for a katalog-sync-daemon
 type DaemonConfig struct {
 	MinSyncInterval     time.Duration `long:"min-sync-interval" description:"minimum duration allowed for sync" default:"500ms"`
 	MaxSyncInterval     time.Duration `long:"max-sync-interval" description:"maximum duration allowed for sync" default:"5s"`
@@ -27,6 +28,7 @@ type DaemonConfig struct {
 	SyncTTLBuffer       time.Duration `long:"sync-ttl-buffer-duration" description:"how much time to ensure is between sync time and ttl" default:"10s"`
 }
 
+// NewDaemon is a helper function to return a new *Daemon
 func NewDaemon(c DaemonConfig, k8sClient Kubelet, consulClient *consulApi.Client) *Daemon {
 	return &Daemon{
 		c:            c,
@@ -65,6 +67,10 @@ func (d *Daemon) doSync(ctx context.Context) error {
 	}
 }
 
+// Register handles a sidecar request for registration. This will block until
+// (1) the pod excluding the sidecar container is ready
+// (2) the service has been pushed to the agent services API
+// (3) the entry shows up in the catalog API (meaning it synced to the cluster)
 func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*katalogsync.RegisterResult, error) {
 	if err := d.doSync(ctx); err != nil {
 		return nil, err
@@ -118,6 +124,9 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 	}
 }
 
+// Deregister handles a sidecar request for deregistration. This will block until
+// (2) the service has been removed from the agent services API
+// (3) the entry has been removed from the catalog API (meaning it synced to the cluster)
 func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery) (*katalogsync.DeregisterResult, error) {
 	if err := d.doSync(ctx); err != nil {
 		return nil, err
@@ -364,6 +373,7 @@ func (d *Daemon) syncConsul() error {
 
 type consulNodeFunc func(*consulApi.CatalogNode) bool
 
+// ConsulNodeDoUntil is a helper to wait until a change has propogated into the CatalogAPI
 func (d *Daemon) ConsulNodeDoUntil(ctx context.Context, nodeName string, opts *consulApi.QueryOptions, f consulNodeFunc) error {
 	for {
 		// If the client is no longer waiting, lets stop checking
