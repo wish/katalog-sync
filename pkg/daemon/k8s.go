@@ -10,11 +10,13 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+// KubeletClientConfig holds the config options for connecting to the kubelet API
 type KubeletClientConfig struct {
 	APIEndpoint        string `long:"kubelet-api" description:"kubelet API endpoint" default:"http://localhost:10255/pods"`
 	InsecureSkipVerify bool   `long:"kubelet-api-insecure-skip-verify" description:"skip verification of TLS certificate from kubelet API"`
 }
 
+// NewKubeletClient returns a new KubeletClient based on the given config
 func NewKubeletClient(c KubeletClientConfig) (*KubeletClient, error) {
 	// creates the in-cluster config
 	config, err := rest.InClusterConfig()
@@ -42,11 +44,13 @@ func NewKubeletClient(c KubeletClientConfig) (*KubeletClient, error) {
 	return &KubeletClient{c: c, client: &http.Client{Transport: transport}}, nil
 }
 
+// KubeletClient is an HTTP client for kubelet that implements the Kubelet interface
 type KubeletClient struct {
 	c      KubeletClientConfig
 	client *http.Client
 }
 
+// GetPodList returns the list of pods the kubelet is managing
 func (k *KubeletClient) GetPodList() (*k8sApi.PodList, error) {
 	// k8s testing
 	req, err := http.NewRequest("GET", k.c.APIEndpoint, nil)
