@@ -243,8 +243,6 @@ func (d *Daemon) Run() error {
 			}
 		}
 	}
-
-	return nil
 }
 
 // fetchK8s is responsible for updating the local k8sState with what we pull
