@@ -327,11 +327,11 @@ func (d *Daemon) syncConsul() error {
 					Name:    serviceName,
 					Port:    pod.GetPort(serviceName), // TODO: error if missing? Or default to first found?
 					Address: pod.Status.PodIP,
-					Meta: map[string]string{ // TODO: have a tag here say katalog-sync?
-						"external-source":      "kubernetes",             // TODO: make this configurable?
-						"external-sync-source": "katalog-sync",           // TODO:: configurable?
-						"external-k8s-ns":      pod.ObjectMeta.Namespace, /// Lets put in what NS this came from
-						ConsulK8sLinkName:      pod.ObjectMeta.SelfLink,  // which includes full path to this (ns, pod name, etc.)
+					Meta: map[string]string{
+						"external-source":    "kubernetes",             // TODO: make this configurable?
+						"external-k8s-ns":    pod.ObjectMeta.Namespace, /// Lets put in what NS this came from
+						ConsulSyncSourceName: ConsulSyncSourceValue,    // Mark this as katalog-sync so we know we generated this
+						ConsulK8sLinkName:    pod.ObjectMeta.SelfLink,  // which includes full path to this (ns, pod name, etc.)
 						// TODO: other annotations that get mapped here
 					},
 					Tags: pod.GetTags(serviceName),
