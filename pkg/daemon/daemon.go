@@ -325,7 +325,7 @@ func (d *Daemon) syncConsul() error {
 				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().ServiceRegister(&consulApi.AgentServiceRegistration{
 					ID:      pod.GetServiceID(serviceName),
 					Name:    serviceName,
-					Port:    pod.GetPort(serviceName), // TODO: error if missing? Or default to first found?
+					Port:    pod.GetPort(serviceName),
 					Address: pod.Status.PodIP,
 					Meta: map[string]string{
 						"external-source":    "kubernetes",             // TODO: make this configurable?
@@ -336,7 +336,6 @@ func (d *Daemon) syncConsul() error {
 					},
 					Tags: pod.GetTags(serviceName),
 
-					// TODO: proxy through to us (or sidecar?) for local pod state
 					Check: &consulApi.AgentServiceCheck{
 						CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path
 						TTL:     pod.CheckTTL.String(),
