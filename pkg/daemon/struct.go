@@ -149,9 +149,8 @@ func (p *Pod) GetPort(n string) int {
 		port, err := strconv.Atoi(portStr)
 		if err == nil {
 			return port
-		} else {
-			logrus.Errorf("Unable to parse port from annotation %s: %v", portStr, err)
 		}
+		logrus.Errorf("Unable to parse port from annotation %s: %v", portStr, err)
 	}
 
 	// First we look for a port in an annotation
@@ -159,9 +158,8 @@ func (p *Pod) GetPort(n string) int {
 		port, err := strconv.Atoi(portStr)
 		if err == nil {
 			return port
-		} else {
-			logrus.Errorf("Unable to parse port from annotation %s: %v", portStr, err)
 		}
+		logrus.Errorf("Unable to parse port from annotation %s: %v", portStr, err)
 	}
 
 	// If no port was defined, we find the first port we can in the spec and use that

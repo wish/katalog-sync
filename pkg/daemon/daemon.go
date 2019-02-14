@@ -119,9 +119,8 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 
 	if ready, _ := pod.Ready(); ready {
 		return nil, nil
-	} else {
-		return nil, fmt.Errorf("not ready!: %v", pod.SyncStatuses.GetError())
 	}
+	return nil, fmt.Errorf("not ready!: %v", pod.SyncStatuses.GetError())
 }
 
 // Deregister handles a sidecar request for deregistration. This will block until
@@ -174,9 +173,8 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 
 	if ready, _ := pod.Ready(); !ready {
 		return nil, nil
-	} else {
-		return nil, fmt.Errorf("ready!: %v", pod.SyncStatuses.GetError())
 	}
+	return nil, fmt.Errorf("ready!: %v", pod.SyncStatuses.GetError())
 }
 
 func (d *Daemon) calculateSleepTime() time.Duration {
@@ -209,11 +207,7 @@ func (d *Daemon) Run() error {
 		}
 
 		// Do initial sync
-		if err := d.syncConsul(); err != nil {
-			return err
-		}
-
-		return nil
+		return d.syncConsul()
 	}
 
 	// Loop forever running the update job
