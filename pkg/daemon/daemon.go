@@ -21,11 +21,11 @@ var (
 
 // DaemonConfig contains the configuration options for a katalog-sync-daemon
 type DaemonConfig struct {
-	MinSyncInterval     time.Duration `long:"min-sync-interval" description:"minimum duration allowed for sync" default:"500ms"`
-	MaxSyncInterval     time.Duration `long:"max-sync-interval" description:"maximum duration allowed for sync" default:"5s"`
-	DefaultSyncInterval time.Duration `long:"default-sync-interval" default:"1s"`
-	DefaultCheckTTL     time.Duration `long:"default-check-ttl" default:"10s"`
-	SyncTTLBuffer       time.Duration `long:"sync-ttl-buffer-duration" description:"how much time to ensure is between sync time and ttl" default:"10s"`
+	MinSyncInterval     time.Duration `long:"min-sync-interval" env:"MIN_SYNC_INTERVAL" description:"minimum duration allowed for sync" default:"500ms"`
+	MaxSyncInterval     time.Duration `long:"max-sync-interval" env:"MAX_SYNC_INTERVAL" description:"maximum duration allowed for sync" default:"5s"`
+	DefaultSyncInterval time.Duration `long:"default-sync-interval" env:"DEFAULT_SYNC_INTERVAL" default:"1s"`
+	DefaultCheckTTL     time.Duration `long:"default-check-ttl" env:"DEFAULT_CHECK_TTL" default:"10s"`
+	SyncTTLBuffer       time.Duration `long:"sync-ttl-buffer-duration" env:"SYNC_TTL_BUFFER_DURATION" description:"how much time to ensure is between sync time and ttl" default:"10s"`
 }
 
 // NewDaemon is a helper function to return a new *Daemon
