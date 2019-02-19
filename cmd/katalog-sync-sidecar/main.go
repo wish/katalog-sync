@@ -17,13 +17,13 @@ import (
 )
 
 var opts struct {
-	LogLevel            string `long:"log-level" description:"Log level" default:"info"`
-	KatalogSyncEndpoint string `long:"katalog-sync-daemon" description:"katalog-sync-daemon API endpoint"`
-	BindAddr            string `long:"bind-address" description:"address for binding checks to"`
+	LogLevel            string `long:"log-level" env:"LOG_LEVEL" description:"Log level" default:"info"`
+	KatalogSyncEndpoint string `long:"katalog-sync-daemon" env:"KATALOG_SYNC_DAEMON" description:"katalog-sync-daemon API endpoint"`
+	BindAddr            string `long:"bind-address" env:"BIND_ADDRESS" description:"address for binding checks to"`
 
-	Namespace     string `long:"namespace"`
-	PodName       string `long:"pod-name"`
-	ContainerName string `long:"container-name"`
+	Namespace     string `long:"namespace" env:"NAMESPACE" description:"k8s namespace this is running in"`
+	PodName       string `long:"pod-name" env:"POD_NAME" description:"k8s pod this is running in"`
+	ContainerName string `long:"container-name" env:"CONTAINER_NAME" description:"k8s container this is running in"`
 }
 
 func main() {

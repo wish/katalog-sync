@@ -12,8 +12,8 @@ import (
 
 // KubeletClientConfig holds the config options for connecting to the kubelet API
 type KubeletClientConfig struct {
-	APIEndpoint        string `long:"kubelet-api" description:"kubelet API endpoint" default:"http://localhost:10255/pods"`
-	InsecureSkipVerify bool   `long:"kubelet-api-insecure-skip-verify" description:"skip verification of TLS certificate from kubelet API"`
+	APIEndpoint        string `long:"kubelet-api" env:"KUBELET_API" description:"kubelet API endpoint" default:"http://localhost:10255/pods"`
+	InsecureSkipVerify bool   `long:"kubelet-api-insecure-skip-verify" env:"KUBELET_API_INSECURE_SKIP_VERIFY" description:"skip verification of TLS certificate from kubelet API"`
 }
 
 // NewKubeletClient returns a new KubeletClient based on the given config

@@ -17,9 +17,9 @@ import (
 
 // TODO: consul flags
 var opts struct {
-	LogLevel      string `long:"log-level" description:"Log level" default:"info"`
-	BindAddr      string `long:"bind-address" description:"address for binding RPC interface for sidecar"`
-	PProfBindAddr string `long:"pprof-bind-address" description:"address for binding pprof"`
+	LogLevel      string `long:"log-level" env:"LOG_LEVEL" description:"Log level" default:"info"`
+	BindAddr      string `long:"bind-address" env:"BIND_ADDRESS" description:"address for binding RPC interface for sidecar"`
+	PProfBindAddr string `long:"pprof-bind-address" env:"PPROF_BIND_ADDRESS" description:"address for binding pprof"`
 	daemon.DaemonConfig
 	daemon.KubeletClientConfig
 }
