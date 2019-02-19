@@ -316,19 +316,28 @@ func (d *Daemon) syncConsul() error {
 					pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().UpdateTTL(pod.GetServiceID(serviceName), string(notesB), consulApi.HealthPassing))
 				}
 			} else {
+				// Define the base metadata that katalog-sync requires
+				meta := map[string]string{
+					"external-source":    "kubernetes",             // TODO: make this configurable?
+					"external-k8s-ns":    pod.ObjectMeta.Namespace, /// Lets put in what NS this came from
+					ConsulSyncSourceName: ConsulSyncSourceValue,    // Mark this as katalog-sync so we know we generated this
+					ConsulK8sLinkName:    pod.ObjectMeta.SelfLink,  // which includes full path to this (ns, pod name, etc.)
+				}
+				// Add in any metadata that the pod annotations define
+				for k, v := range pod.GetServiceMeta(serviceName) {
+					if _, ok := meta[k]; !ok {
+						meta[k] = v
+					}
+				}
+
+				// Next we actually register the service with consul
 				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().ServiceRegister(&consulApi.AgentServiceRegistration{
 					ID:      pod.GetServiceID(serviceName),
 					Name:    serviceName,
 					Port:    pod.GetPort(serviceName),
 					Address: pod.Status.PodIP,
-					Meta: map[string]string{
-						"external-source":    "kubernetes",             // TODO: make this configurable?
-						"external-k8s-ns":    pod.ObjectMeta.Namespace, /// Lets put in what NS this came from
-						ConsulSyncSourceName: ConsulSyncSourceValue,    // Mark this as katalog-sync so we know we generated this
-						ConsulK8sLinkName:    pod.ObjectMeta.SelfLink,  // which includes full path to this (ns, pod name, etc.)
-						// TODO: other annotations that get mapped here
-					},
-					Tags: pod.GetTags(serviceName),
+					Meta:    meta,
+					Tags:    pod.GetTags(serviceName),
 
 					Check: &consulApi.AgentServiceCheck{
 						CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path

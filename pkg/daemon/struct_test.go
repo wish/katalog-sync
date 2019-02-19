@@ -16,12 +16,13 @@ import (
 var podTestDir = "testfiles"
 
 type podTestResult struct {
-	Err          bool                       `json:"error"`
-	ServiceNames []string                   `json:"service_names"`
-	ServiceIDs   map[string]string          `json:"service_ids"`
-	Tags         map[string][]string        `json:"tags"`
-	Ports        map[string]int             `json:"ports"`
-	Ready        map[string]map[string]bool `json:"ready"`
+	Err          bool                         `json:"error"`
+	ServiceNames []string                     `json:"service_names"`
+	ServiceIDs   map[string]string            `json:"service_ids"`
+	Tags         map[string][]string          `json:"tags"`
+	Ports        map[string]int               `json:"ports"`
+	Ready        map[string]map[string]bool   `json:"ready"`
+	ServiceMeta  map[string]map[string]string `json:"service_meta"`
 }
 
 func TestPod(t *testing.T) {
@@ -69,10 +70,11 @@ func runPodIntegrationTest(t *testing.T, testDir string) {
 
 		t.Run(relFilePath, func(t *testing.T) {
 			result := &podTestResult{
-				ServiceIDs: make(map[string]string),
-				Tags:       make(map[string][]string),
-				Ports:      make(map[string]int),
-				Ready:      make(map[string]map[string]bool),
+				ServiceIDs:  make(map[string]string),
+				Tags:        make(map[string][]string),
+				Ports:       make(map[string]int),
+				Ready:       make(map[string]map[string]bool),
+				ServiceMeta: make(map[string]map[string]string),
 			}
 
 			pod, err := NewPod(k8sPod, &DaemonConfig{})
@@ -86,6 +88,7 @@ func runPodIntegrationTest(t *testing.T, testDir string) {
 					result.Tags[name] = pod.GetTags(name)
 					result.Ports[name] = pod.GetPort(name)
 					_, result.Ready[name] = pod.Ready()
+					result.ServiceMeta[name] = pod.GetServiceMeta(name)
 				}
 			}
 
