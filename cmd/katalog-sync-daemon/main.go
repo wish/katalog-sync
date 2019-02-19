@@ -2,6 +2,8 @@ package main
 
 import (
 	"net"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	consulApi "github.com/hashicorp/consul/api"
@@ -15,8 +17,9 @@ import (
 
 // TODO: consul flags
 var opts struct {
-	LogLevel string `long:"log-level" description:"Log level" default:"info"`
-	BindAddr string `long:"bind-address" description:"address for binding RPC interface for sidecar"`
+	LogLevel      string `long:"log-level" description:"Log level" default:"info"`
+	BindAddr      string `long:"bind-address" description:"address for binding RPC interface for sidecar"`
+	PProfBindAddr string `long:"pprof-bind-address" description:"address for binding pprof"`
 	daemon.DaemonConfig
 	daemon.KubeletClientConfig
 }
@@ -30,6 +33,17 @@ func main() {
 			os.Exit(1)
 		}
 		logrus.Fatalf("Error parsing flags: %v", err)
+	}
+
+	if opts.PProfBindAddr != "" {
+		l, err := net.Listen("tcp", opts.PProfBindAddr)
+		if err != nil {
+			logrus.Fatalf("Error binding: %v", err)
+		}
+
+		go func() {
+			http.Serve(l, http.DefaultServeMux)
+		}()
 	}
 
 	// Use log level
