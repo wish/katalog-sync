@@ -12,5 +12,6 @@ katalog-sync has:
 katalog-sync does this by making a few assumptions:
 
 - You have a consul-agent running on each node (presumably as a Daemonset)
+- You are running a consul-agent which supports ServiceMetadata (>= [1.0.7](https://www.hashicorp.com/blog/consul-1-0-7))
 - You want to sync Pods to consul services and have the readiness values reflected
 - Your pods can communicate with Daemonsets running on the same node
