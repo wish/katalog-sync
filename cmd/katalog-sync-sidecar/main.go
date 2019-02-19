@@ -17,9 +17,10 @@ import (
 )
 
 var opts struct {
-	LogLevel            string `long:"log-level" env:"LOG_LEVEL" description:"Log level" default:"info"`
-	KatalogSyncEndpoint string `long:"katalog-sync-daemon" env:"KATALOG_SYNC_DAEMON" description:"katalog-sync-daemon API endpoint"`
-	BindAddr            string `long:"bind-address" env:"BIND_ADDRESS" description:"address for binding checks to"`
+	LogLevel              string        `long:"log-level" env:"LOG_LEVEL" description:"Log level" default:"info"`
+	KatalogSyncEndpoint   string        `long:"katalog-sync-daemon" env:"KATALOG_SYNC_DAEMON" description:"katalog-sync-daemon API endpoint"`
+	KatalogSyncMaxBackoff time.Duration `long:"katalog-sync-daemon-max-backoff" env:"KATALOG_SYNC_DAEMON_MAX_BACKOFF" description:"katalog-sync-daemon API max backoff" default:"1s"`
+	BindAddr              string        `long:"bind-address" env:"BIND_ADDRESS" description:"address for binding checks to"`
 
 	Namespace     string `long:"namespace" env:"NAMESPACE" description:"k8s namespace this is running in"`
 	PodName       string `long:"pod-name" env:"POD_NAME" description:"k8s pod this is running in"`
@@ -68,7 +69,7 @@ func main() {
 		http.Serve(l, http.DefaultServeMux)
 	}()
 
-	conn, err := grpc.Dial(opts.KatalogSyncEndpoint, grpc.WithInsecure())
+	conn, err := grpc.Dial(opts.KatalogSyncEndpoint, grpc.WithInsecure(), grpc.WithBackoffMaxDelay(opts.KatalogSyncMaxBackoff))
 	if err != nil {
 		logrus.Fatalf("Unable to connect to katalog-sync-daemon: %v", err)
 	}
