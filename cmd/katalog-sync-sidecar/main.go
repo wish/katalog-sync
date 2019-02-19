@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	flags "github.com/jessevdk/go-flags"
 	"github.com/sirupsen/logrus"
@@ -75,16 +76,34 @@ func main() {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel() // TODO: do we even need this?
-	sigs := make(chan os.Signal)
+	sigs := make(chan os.Signal, 1)
 	defer close(sigs)
 	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGTERM, syscall.SIGINT)
 
 	client := katalogsync.NewKatalogSyncClient(conn)
 
-	logrus.Infof("Starting register")
 	// Connect to sidecar and send register request
-	if _, err := client.Register(ctx, &katalogsync.RegisterQuery{Namespace: opts.Namespace, PodName: opts.PodName, ContainerName: opts.ContainerName}); err != nil {
-		panic(err)
+	// We want to retry until we are successful
+	for {
+		// If we get a signal to stop; lets gracefully exit
+		select {
+		case sig := <-sigs:
+			switch sig {
+			case syscall.SIGTERM, syscall.SIGINT:
+				logrus.Infof("Got signal to stop while registering, exiting")
+				return
+			}
+		default:
+		}
+
+		if _, err := client.Register(ctx, &katalogsync.RegisterQuery{Namespace: opts.Namespace, PodName: opts.PodName, ContainerName: opts.ContainerName}); err != nil {
+			logrus.Errorf("error registering with katalog-sync-daemon: %v %v", grpc.Code(err), err)
+		} else {
+			break
+		}
+
+		// TODO: better sleep + backoff based on GRPC error codes
+		time.Sleep(time.Second)
 	}
 	ready = true
 	logrus.Infof("register complete, waiting for signals")
