@@ -141,5 +141,8 @@ WAITLOOP:
 		if err == nil {
 			return
 		}
+
+		// TODO: better sleep + backoff based on GRPC error codes
+		time.Sleep(time.Second)
 	}
 }
