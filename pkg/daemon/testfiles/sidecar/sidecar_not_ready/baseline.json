@@ -25,5 +25,9 @@
   "ready": {
     "hw-service-name": null,
     "servicename2": null
+  },
+  "service_meta": {
+    "hw-service-name": null,
+    "servicename2": null
   }
 }

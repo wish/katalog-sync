@@ -18,6 +18,8 @@ var (
 	ConsulServicePortOverride = "katalog-sync.wish.com/service-port-"     // port override to use for a specific service name
 	ConsulServiceTags         = "katalog-sync.wish.com/service-tags"      // tags for the service
 	ConsulServiceTagsOverride = "katalog-sync.wish.com/service-tags-"     // tags override to use for a specific service name
+	ConsulServiceMeta         = "katalog-sync.wish.com/service-meta"      // meta for the service
+	ConsulServiceMetaOverride = "katalog-sync.wish.com/service-meta-"     // meta override to use for a specific service name
 	SidecarName               = "katalog-sync.wish.com/sidecar"           // Name of sidecar container, only to be set if it exists
 	SyncInterval              = "katalog-sync.wish.com/sync-interval"     // How frequently we want to sync this service
 	ConsulServiceCheckTTL     = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
@@ -140,6 +142,19 @@ func (p *Pod) GetTags(n string) []string {
 	}
 
 	return strings.Split(p.Pod.ObjectMeta.Annotations[ConsulServiceTags], ",")
+}
+
+// GetServiceMeta returns a map of metadata to be added to the ServiceMetadata
+func (p *Pod) GetServiceMeta(n string) map[string]string {
+	if metaStr, ok := p.Pod.ObjectMeta.Annotations[ConsulServiceMetaOverride+n]; ok {
+		return ParseMap(metaStr)
+	}
+
+	if metaStr, ok := p.Pod.ObjectMeta.Annotations[ConsulServiceMeta]; ok {
+		return ParseMap(metaStr)
+	}
+
+	return nil
 }
 
 // GetPort returns the port for a given service for this pod

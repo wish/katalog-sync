@@ -29,5 +29,15 @@
     "servicename2": {
       "hw": true
     }
+  },
+  "service_meta": {
+    "hw-service-name": {
+      "a": "1",
+      "b": "2"
+    },
+    "servicename2": {
+      "b": "1",
+      "c": "2"
+    }
   }
 }

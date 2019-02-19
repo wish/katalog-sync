@@ -4,5 +4,6 @@
   "service_ids": {},
   "tags": {},
   "ports": {},
-  "ready": {}
+  "ready": {},
+  "service_meta": {}
 }

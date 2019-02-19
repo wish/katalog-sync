@@ -29,5 +29,9 @@
     "servicename2": {
       "hw": true
     }
+  },
+  "service_meta": {
+    "hw-service-name": null,
+    "servicename2": null
   }
 }

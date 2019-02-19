@@ -17,6 +17,8 @@
 			"katalog-sync.wish.com/service-port-servicename2": "12345",
 			"katalog-sync.wish.com/service-tags": "a,b",
 			"katalog-sync.wish.com/service-tags-servicename2": "b,c",
+			"katalog-sync.wish.com/service-meta": "a:1,b:2",
+			"katalog-sync.wish.com/service-meta-servicename2": "b:1,c:2",
 			"katalog-sync.wish.com/sidecar": "katalog-sync-sidecar",
 			"katalog-sync.wish.com/sync-interval": "2s",
 			"kubernetes.io/config.seen": "2019-02-11T15:44:03.945239692-08:00",

@@ -7,7 +7,7 @@ metadata:
   labels:
     app: hw
 spec:
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: hw
@@ -20,6 +20,8 @@ spec:
         katalog-sync.wish.com/service-names: hw-service-name,servicename2
         katalog-sync.wish.com/service-port: '8080'
         katalog-sync.wish.com/service-port-servicename2: '12345'
+        katalog-sync.wish.com/service-meta: 'a:1,b:2'
+        katalog-sync.wish.com/service-meta-servicename2: 'b:1,c:2'
         katalog-sync.wish.com/service-tags: a,b
         katalog-sync.wish.com/sync-interval: 2s
     spec:
