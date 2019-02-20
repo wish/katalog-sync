@@ -318,9 +318,9 @@ func (d *Daemon) syncConsul() error {
 			} else {
 				// Define the base metadata that katalog-sync requires
 				meta := map[string]string{
-					"external-source":    "kubernetes",             // Define the source of this service; see https://github.com/hashicorp/consul/blob/fc1d9e5d78749edc55249e5e7c1a8f7a24add99d/website/source/docs/platform/k8s/service-sync.html.md#service-meta
-					ConsulSyncSourceName: ConsulSyncSourceValue,    // Mark this as katalog-sync so we know we generated this
-					ConsulK8sLinkName:    pod.ObjectMeta.SelfLink,  // which includes full path to this (ns, pod name, etc.)
+					"external-source":    "kubernetes",            // Define the source of this service; see https://github.com/hashicorp/consul/blob/fc1d9e5d78749edc55249e5e7c1a8f7a24add99d/website/source/docs/platform/k8s/service-sync.html.md#service-meta
+					ConsulSyncSourceName: ConsulSyncSourceValue,   // Mark this as katalog-sync so we know we generated this
+					ConsulK8sLinkName:    pod.ObjectMeta.SelfLink, // which includes full path to this (ns, pod name, etc.)
 				}
 				// Add in any metadata that the pod annotations define
 				for k, v := range pod.GetServiceMeta(serviceName) {
