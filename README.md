@@ -16,6 +16,13 @@ katalog-sync makes the following assumptions:
 - You want to sync Pods to consul services and have the readiness values reflected
 - Your pods can communicate with Daemonsets running on the same node
 
+### katalog-sync overview
+<img src="./static/katalog-sync-diagram.svg" width=512 />
+
+1. Kubelet starts container on Node
+1. (optional) katalog-sync-sidecar calls to katalog-sync-daemonset waiting until registration with consul is complete
+1. Daemonset syncs changes from kubelet through the local kubelet API
+1. Daemonset syncs changes to consul
 
 ### k8s pod annotations
 | Annotation                                        |                                                  |
