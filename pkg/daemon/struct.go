@@ -98,8 +98,17 @@ type Pod struct {
 	SyncInterval time.Duration
 }
 
-// TODO: check if there needs to be a change to the given service based on this pod
+// HasChange will return whether a change has been made that needs a full resync
+// if not then a simple TTL update will suffice
 func (p *Pod) HasChange(service *consulApi.AgentService) bool {
+	if service.Port != p.GetPort(service.Service) {
+		return true
+	}
+
+	if service.Address != p.Status.PodIP {
+		return true
+	}
+
 	return false
 }
 
