@@ -141,7 +141,11 @@ func (p *Pod) GetTags(n string) []string {
 		return strings.Split(tagStr, ",")
 	}
 
-	return strings.Split(p.Pod.ObjectMeta.Annotations[ConsulServiceTags], ",")
+	if tagStr, ok := p.Pod.ObjectMeta.Annotations[ConsulServiceTags]; ok {
+		return strings.Split(tagStr, ",")
+	}
+
+	return nil
 }
 
 // GetServiceMeta returns a map of metadata to be added to the ServiceMetadata
