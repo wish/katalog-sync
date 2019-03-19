@@ -1,0 +1,163 @@
+{
+	"metadata": {
+		"name": "hw-7df6995f69-96wth",
+		"generateName": "hw-7df6995f69-",
+		"namespace": "hw",
+		"selfLink": "/api/v1/namespaces/hw/pods/hw-7df6995f69-96wth",
+		"uid": "4a6f4de2-2e58-11e9-8f72-54e1ad14ee37",
+		"resourceVersion": "7123",
+		"creationTimestamp": "2019-02-11T23:53:55Z",
+		"labels": {
+			"app": "hw",
+			"pod-template-hash": "7df6995f69"
+		},
+		"annotations": {
+			"katalog-sync.wish.com/service-names": "hw-service-name,servicename2",
+			"katalog-sync.wish.com/service-port": "8080",
+			"katalog-sync.wish.com/service-tags": "a,b",
+			"katalog-sync.wish.com/service-tags-servicename2": "b,c",
+			"katalog-sync.wish.com/container-exclude": "ignore-container",
+			"katalog-sync.wish.com/sync-interval": "2s",
+			"kubernetes.io/config.seen": "2019-02-11T15:53:55.238848124-08:00",
+			"kubernetes.io/config.source": "api"
+		},
+		"ownerReferences": [{
+			"apiVersion": "apps/v1",
+			"kind": "ReplicaSet",
+			"name": "hw-7df6995f69",
+			"uid": "4a6df5fd-2e58-11e9-8f72-54e1ad14ee37",
+			"controller": true,
+			"blockOwnerDeletion": true
+		}]
+	},
+	"spec": {
+		"volumes": [{
+			"name": "default-token-zwnc6",
+			"secret": {
+				"secretName": "default-token-zwnc6",
+				"defaultMode": 420
+			}
+		}],
+		"containers": [{
+			"name": "hw",
+			"image": "smcquay/hw:v0.1.5",
+			"ports": [{
+				"containerPort": 8080,
+				"protocol": "TCP"
+			}],
+			"resources": {},
+			"volumeMounts": [{
+				"name": "default-token-zwnc6",
+				"readOnly": true,
+				"mountPath": "/var/run/secrets/kubernetes.io/serviceaccount"
+			}],
+			"livenessProbe": {
+				"httpGet": {
+					"path": "/live",
+					"port": 8080,
+					"scheme": "HTTP"
+				},
+				"initialDelaySeconds": 5,
+				"timeoutSeconds": 1,
+				"periodSeconds": 5,
+				"successThreshold": 1,
+				"failureThreshold": 3
+			},
+			"readinessProbe": {
+				"httpGet": {
+					"path": "/ready",
+					"port": 8080,
+					"scheme": "HTTP"
+				},
+				"timeoutSeconds": 1,
+				"periodSeconds": 5,
+				"successThreshold": 1,
+				"failureThreshold": 3
+			},
+			"terminationMessagePath": "/dev/termination-log",
+			"terminationMessagePolicy": "File",
+			"imagePullPolicy": "Always"
+		}],
+		"restartPolicy": "Always",
+		"terminationGracePeriodSeconds": 1,
+		"dnsPolicy": "ClusterFirst",
+		"serviceAccountName": "default",
+		"serviceAccount": "default",
+		"nodeName": "tjackson-thinkpad-x1-carbon-5th",
+		"securityContext": {},
+		"schedulerName": "default-scheduler",
+		"tolerations": [{
+				"key": "node.kubernetes.io/not-ready",
+				"operator": "Exists",
+				"effect": "NoExecute",
+				"tolerationSeconds": 300
+			},
+			{
+				"key": "node.kubernetes.io/unreachable",
+				"operator": "Exists",
+				"effect": "NoExecute",
+				"tolerationSeconds": 300
+			}
+		],
+		"priority": 0,
+		"enableServiceLinks": true
+	},
+	"status": {
+		"phase": "Running",
+		"conditions": [{
+				"type": "Initialized",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:53:55Z"
+			},
+			{
+				"type": "Ready",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:53:59Z"
+			},
+			{
+				"type": "ContainersReady",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:53:59Z"
+			},
+			{
+				"type": "PodScheduled",
+				"status": "True",
+				"lastProbeTime": null,
+				"lastTransitionTime": "2019-02-11T23:53:55Z"
+			}
+		],
+		"hostIP": "10.10.204.182",
+		"podIP": "10.1.1.140",
+		"startTime": "2019-02-11T23:53:55Z",
+		"containerStatuses": [{
+			"name": "hw",
+			"state": {
+				"running": {
+					"startedAt": "2019-02-11T23:53:58Z"
+				}
+			},
+			"lastState": {},
+			"ready": true,
+			"restartCount": 0,
+			"image": "smcquay/hw:v0.1.5",
+			"imageID": "docker-pullable://smcquay/hw@sha256:514233b4dfbe7b93b2ac07634dc964ab5b1d8318f0c35afe0882fdde6fb245f1",
+			"containerID": "docker://e22d6e7128d6783579a5d55caf06df33d4a18447d59e61a12f8a95d43375a582"
+		},
+        {
+			"name": "ignore-container",
+			"state": {
+				"running": {
+					"startedAt": "2019-02-11T23:53:58Z"
+				}
+			},
+			"lastState": {},
+			"ready": false,
+			"restartCount": 0,
+			"image": "alpine:latest"
+		}],
+		"qosClass": "BestEffort"
+	}
+}
