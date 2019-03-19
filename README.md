@@ -37,6 +37,7 @@ katalog-sync makes the following assumptions:
 | katalog-sync.wish.com/sidecar                     | Container name of the katalog-sync-sidecar       |
 | katalog-sync.wish.com/sync-interval               | How frequently to sync this service with consul  |
 | katalog-sync.wish.com/service-check-ttl           | TTL for the service checks put into consul       |
+| katalog-sync.wish.com/container-exclude           | Comma-separated list of containers to exclude in readiness check |
 
 ### katalog-sync-daemon options
 ``` console
