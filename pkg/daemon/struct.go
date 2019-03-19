@@ -23,6 +23,7 @@ var (
 	SidecarName               = "katalog-sync.wish.com/sidecar"           // Name of sidecar container, only to be set if it exists
 	SyncInterval              = "katalog-sync.wish.com/sync-interval"     // How frequently we want to sync this service
 	ConsulServiceCheckTTL     = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
+	ContainerExclusion        = "katalog-sync.wish.com/container-exclude" // comma-separated list of containers to exclude from ready check
 )
 
 // NewPod returns a daemon pod based on a config and a k8s pod
@@ -211,7 +212,12 @@ func (p *Pod) Ready() (bool, map[string]bool) {
 	}
 	podReady := true
 	containerReadiness := make(map[string]bool)
+	excludeContainers := p.ContainerExclusion()
 	for _, containerStatus := range p.Pod.Status.ContainerStatuses {
+		if _, ok := excludeContainers[containerStatus.Name]; ok {
+			delete(excludeContainers, containerStatus.Name)
+			continue
+		}
 		// If we have a sidecar defined, we skip the container for it -- as the request showed up
 		if p.SidecarState != nil {
 			if containerStatus.Name == p.SidecarState.SidecarName {
@@ -221,7 +227,26 @@ func (p *Pod) Ready() (bool, map[string]bool) {
 		podReady = podReady && containerStatus.Ready
 		containerReadiness[containerStatus.Name] = containerStatus.Ready
 	}
+	if len(excludeContainers) > 0 {
+		logrus.Warnf("Some exclude containers for %s not found in pod: %v", p.ObjectMeta.SelfLink, excludeContainers)
+	}
 	return podReady, containerReadiness
+}
+
+// ContainerExclusion returns the containers that should be excluded from a readiness check
+func (p *Pod) ContainerExclusion() map[string]struct{} {
+	str, ok := p.Pod.ObjectMeta.Annotations[ContainerExclusion]
+	if !ok {
+		return nil
+	}
+	excludeContainers := strings.Split(str, ",")
+
+	m := make(map[string]struct{}, len(excludeContainers))
+	for _, c := range excludeContainers {
+		m[c] = struct{}{}
+	}
+
+	return m
 }
 
 // State from our sidecar service
