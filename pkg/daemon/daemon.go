@@ -81,7 +81,7 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
 	pod, ok := d.localK8sState[k]
 	if !ok {
-		return nil, fmt.Errorf("Unable to find pod: %s", k)
+		return nil, fmt.Errorf("Unable to find pod with katalog-sync annotation (%s): %s", ConsulServiceNames, k)
 	}
 
 	if pod.SidecarState == nil {
@@ -136,7 +136,7 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
 	pod, ok := d.localK8sState[k]
 	if !ok {
-		return nil, fmt.Errorf("Unable to find pod: %s", k)
+		return nil, fmt.Errorf("Unable to find pod with katalog-sync annotation (%s): %s", ConsulServiceNames, k)
 	}
 
 	if pod.SidecarState == nil {
