@@ -299,9 +299,9 @@ func (d *Daemon) syncConsul() error {
 	for _, pod := range d.localK8sState {
 		ready, containerReadiness := pod.Ready()
 
-		status := "critical"
+		status := consulApi.HealthCritical
 		if ready {
-			status = "passing"
+			status = consulApi.HealthPassing
 		}
 
 		notesB, err := json.MarshalIndent(containerReadiness, "", "  ")
@@ -315,7 +315,7 @@ func (d *Daemon) syncConsul() error {
 				// only call update if we are past halflife of last update
 				if pod.SyncStatuses.GetStatus(serviceName).LastUpdated.IsZero() || time.Now().Sub(pod.SyncStatuses.GetStatus(serviceName).LastUpdated) >= (pod.CheckTTL/2) {
 					// If the service already exists, just update the check
-					pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().UpdateTTL(pod.GetServiceID(serviceName), string(notesB), consulApi.HealthPassing))
+					pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().UpdateTTL(pod.GetServiceID(serviceName), string(notesB), status))
 				}
 			} else {
 				// Define the base metadata that katalog-sync requires
