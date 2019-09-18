@@ -8,6 +8,7 @@ import (
 
 	consulApi "github.com/hashicorp/consul/api"
 	"github.com/pkg/errors"
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/sirupsen/logrus"
 
 	katalogsync "github.com/wish/katalog-sync/proto"
@@ -20,6 +21,23 @@ var (
 	ConsulK8sNamespace    = "external-k8s-namespace"
 	ConsulK8sPod          = "external-k8s-pod"
 )
+
+// Metrics
+var (
+	k8sSyncCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "katalog_sync_kubelet_sync_count_total",
+		Help: "How many syncs completed from kubelet API, partitioned by success",
+	}, []string{"status"})
+	consulSyncCount = prometheus.NewCounterVec(prometheus.CounterOpts{
+		Name: "katalog_sync_consul_sync_count_total",
+		Help: "How many syncs completed to consul API, partitioned by success",
+	}, []string{"status"})
+)
+
+func init() {
+	prometheus.MustRegister(k8sSyncCount)
+	prometheus.MustRegister(consulSyncCount)
+}
 
 // DaemonConfig contains the configuration options for a katalog-sync-daemon
 type DaemonConfig struct {
@@ -205,11 +223,20 @@ func (d *Daemon) Run() error {
 		}()
 		// Load initial state from k8s
 		if err := d.fetchK8s(); err != nil {
+			k8sSyncCount.WithLabelValues("error").Inc()
 			logrus.Errorf("Error fetching state from k8s: %v", err)
+		} else {
+			k8sSyncCount.WithLabelValues("success").Inc()
 		}
 
 		// Do initial sync
-		return d.syncConsul()
+		err := d.syncConsul()
+		if err != nil {
+			consulSyncCount.WithLabelValues("error").Inc()
+		} else {
+			consulSyncCount.WithLabelValues("success").Inc()
+		}
+		return err
 	}
 
 	// Loop forever running the update job
