@@ -205,7 +205,7 @@ func (d *Daemon) Run() error {
 		}()
 		// Load initial state from k8s
 		if err := d.fetchK8s(); err != nil {
-			return err
+			logrus.Errorf("Error fetching state from k8s: %v", err)
 		}
 
 		// Do initial sync
