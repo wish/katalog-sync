@@ -8,6 +8,7 @@ import (
 
 	consulApi "github.com/hashicorp/consul/api"
 	flags "github.com/jessevdk/go-flags"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/sirupsen/logrus"
 	grpc "google.golang.org/grpc"
 
@@ -17,9 +18,10 @@ import (
 
 // TODO: consul flags
 var opts struct {
-	LogLevel      string `long:"log-level" env:"LOG_LEVEL" description:"Log level" default:"info"`
-	BindAddr      string `long:"bind-address" env:"BIND_ADDRESS" description:"address for binding RPC interface for sidecar"`
-	PProfBindAddr string `long:"pprof-bind-address" env:"PPROF_BIND_ADDRESS" description:"address for binding pprof"`
+	LogLevel        string `long:"log-level" env:"LOG_LEVEL" description:"Log level" default:"info"`
+	BindAddr        string `long:"bind-address" env:"BIND_ADDRESS" description:"address for binding RPC interface for sidecar"`
+	MetricsBindAddr string `long:"metrics-bind-address" env:"METRICS_BIND_ADDRESS" description:"address for binding metrics interface"`
+	PProfBindAddr   string `long:"pprof-bind-address" env:"PPROF_BIND_ADDRESS" description:"address for binding pprof"`
 	daemon.DaemonConfig
 	daemon.KubeletClientConfig
 }
@@ -43,6 +45,20 @@ func main() {
 
 		go func() {
 			http.Serve(l, http.DefaultServeMux)
+		}()
+	}
+
+	if opts.MetricsBindAddr != "" {
+		l, err := net.Listen("tcp", opts.MetricsBindAddr)
+		if err != nil {
+			logrus.Fatalf("Error binding: %v", err)
+		}
+
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+
+		go func() {
+			http.Serve(l, mux)
 		}()
 	}
 
