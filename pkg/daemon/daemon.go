@@ -28,15 +28,27 @@ var (
 		Name: "katalog_sync_kubelet_sync_count_total",
 		Help: "How many syncs completed from kubelet API, partitioned by success",
 	}, []string{"status"})
+	k8sSyncSummary = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "katalog_sync_kubelet_sync_duration_seconds",
+		Help: "Latency of sync process from kubelet",
+	}, []string{"status"})
 	consulSyncCount = prometheus.NewCounterVec(prometheus.CounterOpts{
 		Name: "katalog_sync_consul_sync_count_total",
 		Help: "How many syncs completed to consul API, partitioned by success",
 	}, []string{"status"})
+	consulSyncSummary = prometheus.NewSummaryVec(prometheus.SummaryOpts{
+		Name: "katalog_sync_consul_sync_duration_seconds",
+		Help: "Latency of sync process from kubelet",
+	}, []string{"status"})
 )
 
 func init() {
-	prometheus.MustRegister(k8sSyncCount)
-	prometheus.MustRegister(consulSyncCount)
+	prometheus.MustRegister(
+		k8sSyncCount,
+		k8sSyncSummary,
+		consulSyncCount,
+		consulSyncSummary,
+	)
 }
 
 // DaemonConfig contains the configuration options for a katalog-sync-daemon
@@ -222,19 +234,25 @@ func (d *Daemon) Run() error {
 			lastRun = time.Now()
 		}()
 		// Load initial state from k8s
+		start := time.Now()
 		if err := d.fetchK8s(); err != nil {
 			k8sSyncCount.WithLabelValues("error").Inc()
+			k8sSyncSummary.WithLabelValues("error").Observe(time.Now().Sub(start).Seconds())
 			logrus.Errorf("Error fetching state from k8s: %v", err)
 		} else {
 			k8sSyncCount.WithLabelValues("success").Inc()
+			k8sSyncSummary.WithLabelValues("success").Observe(time.Now().Sub(start).Seconds())
 		}
 
 		// Do initial sync
+		start = time.Now()
 		err := d.syncConsul()
 		if err != nil {
 			consulSyncCount.WithLabelValues("error").Inc()
+			consulSyncSummary.WithLabelValues("error").Observe(time.Now().Sub(start).Seconds())
 		} else {
 			consulSyncCount.WithLabelValues("success").Inc()
+			consulSyncSummary.WithLabelValues("success").Observe(time.Now().Sub(start).Seconds())
 		}
 		return err
 	}
