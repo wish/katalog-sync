@@ -1,4 +1,9 @@
-FROM       golang:alpine as builder
+FROM --platform=$BUILDPLATFORM golang:alpine as builder
+
+ARG BUILDPLATFORM
+ARG TARGETARCH
+ARG TARGETOS
+ENV GOARCH=${TARGETARCH} GOOS=${TARGETOS}
 
 COPY . /go/src/github.com/wish/katalog-sync
 RUN cd /go/src/github.com/wish/katalog-sync/cmd/katalog-sync-daemon && CGO_ENABLED=0 go build

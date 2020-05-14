@@ -21,3 +21,6 @@ imports:
 test:
 	$(GO) test -v ./...
 
+.PHONY: docker
+docker:
+	DOCKER_BUILDKIT=1 docker build .
