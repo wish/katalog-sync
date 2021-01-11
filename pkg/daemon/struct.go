@@ -210,6 +210,15 @@ func (p *Pod) Ready() (bool, map[string]bool) {
 			return false, nil
 		}
 	}
+
+	// If pod is terminating we want to mark it as not-ready (for sync status);
+	// This way we mimic the shutdown behavior of normal services (e.g. pods
+	// in terminating status are removed as endpoints for servivces)
+	// Determining Terminating state as kubectl does (https://github.com/kubernetes/kubernetes/blob/v1.2.0/pkg/kubectl/resource_printer.go#L588)
+	if p.DeletionTimestamp != nil {
+		return false, nil
+	}
+
 	podReady := true
 	containerReadiness := make(map[string]bool)
 	excludeContainers := p.ContainerExclusion()
