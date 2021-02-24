@@ -108,7 +108,7 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 		return nil, err
 	}
 
-	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
+	k := podCacheKey(in.Namespace, in.PodName)
 	pod, ok := d.localK8sState[k]
 	if !ok {
 		return nil, fmt.Errorf("Unable to find pod with katalog-sync annotation (%s): %s", ConsulServiceNames, k)
@@ -163,7 +163,7 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 		return nil, err
 	}
 
-	k := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s", in.Namespace, in.PodName)
+	k := podCacheKey(in.Namespace, in.PodName)
 	pod, ok := d.localK8sState[k]
 	if !ok {
 		return nil, fmt.Errorf("Unable to find pod with katalog-sync annotation (%s): %s", ConsulServiceNames, k)
@@ -307,7 +307,7 @@ func (d *Daemon) fetchK8s() error {
 			continue
 		}
 
-		key := pod.ObjectMeta.SelfLink
+		key := podCacheKey(pod.Namespace, pod.Name)
 		newKeys[key] = struct{}{}
 		if existingPod, ok := d.localK8sState[key]; ok {
 			existingPod.UpdatePod(pod)
@@ -439,4 +439,11 @@ func (d *Daemon) ConsulNodeDoUntil(ctx context.Context, nodeName string, opts *c
 			return nil
 		}
 	}
+}
+
+func podCacheKey(namespace, name string) string {
+	if namespace == "" {
+		namespace = "default"
+	}
+	return fmt.Sprintf("%s/%s", namespace, name)
 }
