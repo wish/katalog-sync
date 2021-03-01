@@ -1,4 +1,4 @@
-# katalog-sync [![GoDoc](https://godoc.org/github.com/wish/katalog-sync?status.svg)](https://godoc.org/github.com/wish/katalog-sync) [![Build Status](https://travis-ci.org/wish/katalog-sync.svg?branch=master)](https://travis-ci.org/wish/katalog-sync)  [![Go Report Card](https://goreportcard.com/badge/github.com/wish/katalog-sync)](https://goreportcard.com/report/github.com/wish/katalog-sync)  [![Docker Repository on Quay](https://quay.io/repository/wish/katalog-sync/status "Docker Repository on Quay")](https://quay.io/repository/wish/katalog-sync)
+# katalog-sync [![GoDoc](https://godoc.org/github.com/wish/katalog-sync?status.svg)](https://godoc.org/github.com/wish/katalog-sync) [![Build Status](https://travis-ci.org/wish/katalog-sync.svg?branch=master)](https://travis-ci.org/wish/katalog-sync)  [![Go Report Card](https://goreportcard.com/badge/github.com/wish/katalog-sync)](https://goreportcard.com/report/github.com/wish/katalog-sync)
 
 katalog-sync is a node-local mechanism for syncing k8s pods to consul services.
 
