@@ -139,9 +139,10 @@ WAITLOOP:
 		logrus.Infof("deregister attempt")
 		_, err := client.Deregister(ctx, &katalogsync.DeregisterQuery{Namespace: opts.Namespace, PodName: opts.PodName, ContainerName: opts.ContainerName})
 		if err == nil {
+			logrus.Infof("deregister succeed")
 			return
 		}
-
+		logrus.Errorf("error deregistering with katalog-sync-daemon: %v %v", grpc.Code(err), err)
 		// TODO: better sleep + backoff based on GRPC error codes
 		time.Sleep(time.Second)
 	}
