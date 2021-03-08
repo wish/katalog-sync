@@ -1,0 +1,3 @@
+cmd/katalog-sync-daemon/katalog-sync-daemon
+cmd/katalog-sync-sidecar/katalog-sync-sidecar
+config/*
