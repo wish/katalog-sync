@@ -1,4 +1,42 @@
 ---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: katalog-sync
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: katalog-sync
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: katalog-sync
+subjects:
+- kind: ServiceAccount
+  name: katalog-sync
+  namespace: kube-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: katalog-sync
+rules:
+- apiGroups:
+  - ''
+  resources:
+  - nodes/proxy
+  - nodes/metrics
+  verbs:
+  - get
+- apiGroups:
+  - ''
+  resources:
+  - pods/status
+  verbs:
+  - patch
+---
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -17,13 +55,14 @@ spec:
       labels:
         k8s-app: katalog-sync
     spec:
+      serviceAccount: katalog-sync
       containers:
       - command:
         - "/bin/katalog-sync-daemon"
         args:
         - "--bind-address=:8501"
         image: quay.io/wish/katalog-sync:latest
-        imagePullPolicy: Always
+        imagePullPolicy: IfNotPresent
         name: katalog-sync-daemon
       hostNetwork: true
       terminationGracePeriodSeconds: 5
