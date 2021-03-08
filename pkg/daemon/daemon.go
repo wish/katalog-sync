@@ -190,12 +190,22 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 		return nil, err
 	}
 	opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
+
 	if err := d.ConsulNodeDoUntil(ctx, nodeName, opts, func(node *consulApi.CatalogNode) bool {
 		synced := true
 		for _, serviceName := range pod.GetServiceNames() {
 			// If the service exists, then we just need to update
 			if _, ok := node.Services[pod.GetServiceID(serviceName)]; ok {
-				synced = false
+				status, _, err := d.consulClient.Agent().AgentHealthServiceByID(pod.GetServiceID(serviceName))
+				if err == nil {
+					// if it exists and is passing; not done
+					if status == consulApi.HealthPassing {
+						synced = false
+					}
+				} else {
+					// if we got an error; assume it isn't synced
+					synced = false
+				}
 			}
 		}
 		return synced
