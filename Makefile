@@ -24,3 +24,7 @@ test:
 .PHONY: docker
 docker:
 	DOCKER_BUILDKIT=1 docker build .
+
+testlocal-build:
+	DOCKER_BUILDKIT=1 docker build -t quay.io/wish/katalog-sync:latest .
+	kind load docker-image quay.io/wish/katalog-sync:latest
