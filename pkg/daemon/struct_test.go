@@ -16,13 +16,14 @@ import (
 var podTestDir = "testfiles"
 
 type podTestResult struct {
-	Err          bool                         `json:"error"`
-	ServiceNames []string                     `json:"service_names"`
-	ServiceIDs   map[string]string            `json:"service_ids"`
-	Tags         map[string][]string          `json:"tags"`
-	Ports        map[string]int               `json:"ports"`
-	Ready        map[string]map[string]bool   `json:"ready"`
-	ServiceMeta  map[string]map[string]string `json:"service_meta"`
+	Err                      bool                         `json:"error"`
+	ServiceNames             []string                     `json:"service_names"`
+	ServiceIDs               map[string]string            `json:"service_ids"`
+	Tags                     map[string][]string          `json:"tags"`
+	Ports                    map[string]int               `json:"ports"`
+	Ready                    map[string]map[string]bool   `json:"ready"`
+	ServiceMeta              map[string]map[string]string `json:"service_meta"`
+	OutstandingReadinessGate bool                         `json:"outstandingReadinessGate,omitempty"`
 }
 
 func TestPod(t *testing.T) {
@@ -79,7 +80,6 @@ func runPodIntegrationTest(t *testing.T, testDir string) {
 
 			pod, err := NewPod(k8sPod, &DaemonConfig{})
 			result.Err = err != nil
-
 			if err == nil {
 				result.ServiceNames = pod.GetServiceNames()
 
@@ -90,6 +90,12 @@ func runPodIntegrationTest(t *testing.T, testDir string) {
 					_, result.Ready[name] = pod.Ready()
 					result.ServiceMeta[name] = pod.GetServiceMeta(name)
 				}
+			}
+
+			// handle
+			if pod != nil {
+				pod.HandleReadinessGate()
+				result.OutstandingReadinessGate = pod.OutstandingReadinessGate
 			}
 
 			b, err := json.MarshalIndent(result, "", "  ")
