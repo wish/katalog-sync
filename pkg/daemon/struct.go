@@ -1,15 +1,25 @@
 package daemon
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
 	"github.com/sirupsen/logrus"
-	k8sApi "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
+
+// ReadinessGate
+const ReadinessGateType = "katalog-sync.wish.com/synced" // name of readiness gate
 
 var (
 	// Annotation names
@@ -27,7 +37,7 @@ var (
 )
 
 // NewPod returns a daemon pod based on a config and a k8s pod
-func NewPod(pod k8sApi.Pod, dc *DaemonConfig) (*Pod, error) {
+func NewPod(pod corev1.Pod, dc *DaemonConfig) (*Pod, error) {
 	var sidecarState *SidecarState
 	// If we have an annotation saying we have a sidecar, lets load it
 	if sidecarContainerName, ok := pod.ObjectMeta.Annotations[SidecarName]; ok {
@@ -49,6 +59,14 @@ func NewPod(pod k8sApi.Pod, dc *DaemonConfig) (*Pod, error) {
 		sidecarState = &SidecarState{
 			SidecarName: sidecarContainerName,
 			Ready:       sidecarReady,
+		}
+	}
+
+	// Check if we have a readiness gate defined
+	var ourReadinessGate corev1.PodReadinessGate
+	for _, gate := range pod.Spec.ReadinessGates {
+		if gate.ConditionType == ReadinessGateType {
+			ourReadinessGate = gate
 		}
 	}
 
@@ -77,26 +95,37 @@ func NewPod(pod k8sApi.Pod, dc *DaemonConfig) (*Pod, error) {
 		checkTTL = minCheckTTL
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+
 	return &Pod{
-		Pod:          pod,
-		SidecarState: sidecarState,
-		SyncStatuses: make(map[string]*SyncStatus),
+		Pod:                      pod,
+		SidecarState:             sidecarState,
+		SyncStatuses:             make(map[string]*SyncStatus),
+		OutstandingReadinessGate: ourReadinessGate.ConditionType == ReadinessGateType,
 
 		CheckTTL:     checkTTL,
 		SyncInterval: syncInterval,
+		Ctx:          ctx,
+		Cancel:       cancel,
 	}, nil
 
 }
 
 // Pod is our representation of a pod in k8s
 type Pod struct {
-	k8sApi.Pod
+	corev1.Pod
 	*SidecarState
 	// map servicename -> sync status
 	SyncStatuses
+	OutstandingReadinessGate bool // Do we have a ReadinessGate to set
+	InitialSyncDone          bool // Ready and in consul
 
 	CheckTTL     time.Duration
 	SyncInterval time.Duration
+	Ctx          context.Context
+	Cancel       context.CancelFunc
+
+	l sync.Mutex
 }
 
 // HasChange will return whether a change has been made that needs a full resync
@@ -125,7 +154,7 @@ func (p *Pod) GetServiceID(serviceName string) string {
 }
 
 // UpdatePod updates the k8s pod
-func (p *Pod) UpdatePod(k8sPod k8sApi.Pod) {
+func (p *Pod) UpdatePod(k8sPod corev1.Pod) {
 	p.Pod = k8sPod
 }
 
@@ -256,6 +285,97 @@ func (p *Pod) ContainerExclusion() map[string]struct{} {
 	}
 
 	return m
+}
+
+func (p *Pod) HandleReadinessGate() error {
+	p.l.Lock()
+	defer p.l.Unlock()
+	logrus.Debugf("HandleReadinessGate: %v", p.GetServiceNames())
+	// Fast path for things without a readiness gate or with a completed readiness gate
+	if !p.OutstandingReadinessGate {
+		return nil
+	}
+
+	var ourCondition corev1.PodCondition
+	for _, condition := range p.Pod.Status.Conditions {
+		if condition.Type == ReadinessGateType {
+			ourCondition = condition
+		}
+	}
+
+	logrus.Tracef("condition: %v", ourCondition)
+
+	// If the pod is already marked ready; we are done
+	if ourCondition.Status == corev1.ConditionTrue {
+		p.OutstandingReadinessGate = false
+		return nil
+	}
+
+	// We didn't find it, set it!
+	if ourCondition.Type != ReadinessGateType {
+		ourCondition.Type = ReadinessGateType
+	}
+
+	ready, reasonMap := p.Ready()
+	if ready {
+		// Assuming the pod is ready; we need to check sync status
+		var notSyncedServices []string
+		for serviceName, status := range p.SyncStatuses {
+			if status.LastError != nil {
+				notSyncedServices = append(notSyncedServices, serviceName)
+			}
+		}
+		if len(notSyncedServices) != 0 {
+			ourCondition.Status = corev1.ConditionFalse
+			ourCondition.Reason = "Not all services synced to consul"
+			ourCondition.Message = fmt.Sprintf("The following services haven't been synced to consul yet: %s", notSyncedServices)
+		} else {
+			// check that this ended up in consul as well
+			if p.InitialSyncDone {
+				ourCondition.Status = corev1.ConditionTrue
+				ourCondition.Reason = "Done"
+				ourCondition.Message = "Done"
+			} else {
+				ourCondition.Status = corev1.ConditionFalse
+				ourCondition.Reason = "Not synced to remote consul"
+				ourCondition.Message = "State synced to local consul, waiting on sync to remote consul"
+			}
+		}
+	} else {
+		ourCondition.Status = corev1.ConditionFalse
+		ourCondition.Reason = "Not all containers are ready"
+		notesB, err := json.MarshalIndent(reasonMap, "", "  ")
+		if err != nil {
+			panic(err)
+		}
+		ourCondition.Message = string(notesB)
+	}
+
+	logrus.Infof("condition to set: %v", ourCondition)
+
+	patch, err := buildPodConditionPatch(&p.Pod, ourCondition)
+	if err != nil {
+		return err
+	}
+
+	// TODO: pass in
+	config, err := rest.InClusterConfig()
+	if err != nil {
+		return err
+	}
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		return err
+	}
+
+	podsClient := clientset.CoreV1().Pods(p.Pod.ObjectMeta.Namespace)
+
+	_, err = podsClient.Patch(context.TODO(), p.Pod.Name, types.StrategicMergePatchType, patch, metav1.PatchOptions{}, "status")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // State from our sidecar service

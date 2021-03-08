@@ -129,7 +129,6 @@ func (d *Daemon) Register(ctx context.Context, in *katalogsync.RegisterQuery) (*
 		return nil, errors.Wrap(err, "Unable to sync status")
 	}
 
-	// TODO: optional through a flag in RegisterQuery
 	// The goal here is to ensure that the registration has propogated to the rest of the cluster
 	nodeName, err := d.consulClient.Agent().NodeName()
 	if err != nil {
@@ -183,7 +182,6 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 		return nil, errors.Wrap(err, "Unable to sync status")
 	}
 
-	// TODO: optional through a flag in DeregisterQuery
 	// The goal here is to ensure that the deregistration has propogated to the rest of the cluster
 	nodeName, err := d.consulClient.Agent().NodeName()
 	if err != nil {
@@ -311,24 +309,67 @@ func (d *Daemon) fetchK8s() error {
 		newKeys[key] = struct{}{}
 		if existingPod, ok := d.localK8sState[key]; ok {
 			existingPod.UpdatePod(pod)
+			existingPod.HandleReadinessGate()
 		} else {
 			p, err := NewPod(pod, &d.c)
 			if err != nil {
 				logrus.Errorf("error creating local state for pod: %v", err)
 			} else {
 				d.localK8sState[key] = p
+				go d.waitPod(p)
+				// Create readiness gate
+				p.HandleReadinessGate()
 			}
 		}
 	}
 
 	// remove any local ones that don't exist anymore
-	for k := range d.localK8sState {
+	for k, pod := range d.localK8sState {
 		if _, ok := newKeys[k]; !ok {
+			pod.Cancel()
 			delete(d.localK8sState, k)
 		}
 	}
 
 	return nil
+}
+
+// Background goroutine to wait for a pod to be ready in consul; once done set "InitialSyncDone"
+func (d *Daemon) waitPod(pod *Pod) {
+	for {
+		select {
+		case <-pod.Ctx.Done():
+			return
+		default:
+		}
+		// The goal here is to ensure that the registration has propogated to the rest of the cluster
+		nodeName, err := d.consulClient.Agent().NodeName()
+		if err != nil {
+			time.Sleep(time.Second) // TODO; exponential backoff
+			continue                // retry
+		}
+		opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
+		if err := d.ConsulNodeDoUntil(pod.Ctx, nodeName, opts, func(node *consulApi.CatalogNode) bool {
+			synced := true
+			for _, serviceName := range pod.GetServiceNames() {
+				// If the service exists, then we just need to update
+				if _, ok := node.Services[pod.GetServiceID(serviceName)]; !ok {
+					synced = false
+				}
+			}
+			return synced
+		}); err != nil {
+			time.Sleep(time.Second) // TODO; exponential backoff
+			continue                // retry
+		}
+
+		if ready, _ := pod.Ready(); ready {
+			pod.InitialSyncDone = true
+			// trigger a handle of readiness gate to avoid the poll delay.
+			pod.HandleReadinessGate()
+			return
+		}
+	}
 }
 
 // syncConsul is responsible for syncing local state to consul
