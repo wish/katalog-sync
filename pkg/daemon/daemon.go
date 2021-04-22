@@ -428,7 +428,10 @@ func (d *Daemon) syncConsul() error {
 						meta[k] = v
 					}
 				}
-
+				serviceStatus := status
+				if meta[MetaAlwaysHealthy] == "true" {
+					serviceStatus = consulApi.HealthPassing
+				}
 				// Next we actually register the service with consul
 				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().ServiceRegister(&consulApi.AgentServiceRegistration{
 					ID:      pod.GetServiceID(serviceName),
@@ -442,7 +445,7 @@ func (d *Daemon) syncConsul() error {
 						CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path
 						TTL:     pod.CheckTTL.String(),
 
-						Status: status,         // Current status of check
+						Status: serviceStatus,         // Current status of check
 						Notes:  string(notesB), // Map of container->ready
 					},
 				}))
