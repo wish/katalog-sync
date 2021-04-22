@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
@@ -429,7 +430,7 @@ func (d *Daemon) syncConsul() error {
 					}
 				}
 				serviceStatus := status
-				if meta[MetaAlwaysHealthy] == "true" {
+				if alwaysHealthy, err := strconv.ParseBool(meta[MetaAlwaysHealthy]); err == nil && alwaysHealthy {
 					serviceStatus = consulApi.HealthPassing
 				}
 				// Next we actually register the service with consul
