@@ -35,7 +35,7 @@ var (
 	ConsulServiceCheckTTL     = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
 	ContainerExclusion        = "katalog-sync.wish.com/container-exclude" // comma-separated list of containers to exclude from ready check
 
-	// Meta keys that are used as per-service flags
+	// metadata keys in Consul (not k8s annotations) that are used as per-service flags
 	MetaAlwaysHealthy = "_always_healthy"  // always mark service as healthy in Consul
 )
 
