@@ -36,6 +36,13 @@ rules:
   - pods/status
   verbs:
   - patch
+- apiGroups:
+  - ''
+  resources:
+  - pods
+  verbs:
+  - list
+  - get
 ---
 apiVersion: apps/v1
 kind: DaemonSet
