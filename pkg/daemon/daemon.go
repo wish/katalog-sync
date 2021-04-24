@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strconv"
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
@@ -197,8 +196,8 @@ func (d *Daemon) Deregister(ctx context.Context, in *katalogsync.DeregisterQuery
 			if _, ok := node.Services[pod.GetServiceID(serviceName)]; ok {
 				status, _, err := d.consulClient.Agent().AgentHealthServiceByID(pod.GetServiceID(serviceName))
 				if err == nil {
-					// if it exists and is passing; not done
-					if status == consulApi.HealthPassing {
+					// if health status is not fixed and is passing; not done
+					if pod.GetServiceHealth(serviceName, "") == "" && status == consulApi.HealthPassing {
 						synced = false
 					}
 				} else {
@@ -429,10 +428,6 @@ func (d *Daemon) syncConsul() error {
 						meta[k] = v
 					}
 				}
-				serviceStatus := status
-				if alwaysHealthy, err := strconv.ParseBool(meta[MetaAlwaysHealthy]); err == nil && alwaysHealthy {
-					serviceStatus = consulApi.HealthPassing
-				}
 				// Next we actually register the service with consul
 				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().ServiceRegister(&consulApi.AgentServiceRegistration{
 					ID:      pod.GetServiceID(serviceName),
@@ -445,8 +440,7 @@ func (d *Daemon) syncConsul() error {
 					Check: &consulApi.AgentServiceCheck{
 						CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path
 						TTL:     pod.CheckTTL.String(),
-
-						Status: serviceStatus,         // Current status of check
+						Status: pod.GetServiceHealth(serviceName, status),  // Current status of check
 						Notes:  string(notesB), // Map of container->ready
 					},
 				}))
