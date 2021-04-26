@@ -213,6 +213,10 @@ func (p *Pod) GetServiceHealth(n string, defaultVal string) string {
 	case consulApi.HealthPassing:
 	case consulApi.HealthWarning:
 		return healthStr
+	case "":
+		break;  // annotation not set
+	default:
+		logrus.Errorf("Unknown service health status '%v' ignored", healthStr)
 	}
 	return defaultVal
 }
