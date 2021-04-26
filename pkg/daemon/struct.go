@@ -209,12 +209,9 @@ func (p *Pod) GetServiceHealth(n string, defaultVal string) string {
 		healthStr = p.Pod.ObjectMeta.Annotations[ConsulServiceHealth]
 	}
 	switch healthStr {
-	case consulApi.HealthCritical:
-	case consulApi.HealthPassing:
-	case consulApi.HealthWarning:
+	case consulApi.HealthCritical, consulApi.HealthPassing,  consulApi.HealthWarning:
 		return healthStr
-	case "":
-		break;  // annotation not set
+	case "": // annotation not set
 	default:
 		logrus.Errorf("Unknown service health status '%v' ignored", healthStr)
 	}
