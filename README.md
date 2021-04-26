@@ -34,6 +34,8 @@ katalog-sync makes the following assumptions:
 | katalog-sync.wish.com/service-tags-**SERVICE-NAME**  | Tags override to use for a specific service name |
 | katalog-sync.wish.com/service-meta                | ServiceMeta for the consul service                      |
 | katalog-sync.wish.com/service-meta-**SERVICE-NAME**  | ServiceMeta override to use for a specific service name |
+| katalog-sync.wish.com/service-health              | Use a fixed health status string regardless of pod readiness, valid values: 'passing', 'warning', 'critical' |
+| katalog-sync.wish.com/serivce-health-**SERVICE-NAME** | health overrride for a specific service name |
 | katalog-sync.wish.com/sidecar                     | Container name of the katalog-sync-sidecar       |
 | katalog-sync.wish.com/sync-interval               | How frequently to sync this service with consul  |
 | katalog-sync.wish.com/service-check-ttl           | TTL for the service checks put into consul       |
