@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	consulApi "github.com/hashicorp/consul/api"
@@ -390,62 +391,69 @@ func (d *Daemon) syncConsul() error {
 		return err
 	}
 
+	nodeName, _exist := os.LookupEnv("NODE_NAME")
+	if !_exist {
+		nodeName = os.Getenv("HOSTNAME")
+	}
+
 	// TODO: split out update, for now we'll just re-register it all
 	// Push/Update from local state
 	for _, pod := range d.localK8sState {
-		ready, containerReadiness := pod.Ready()
+		if pod.Spec.NodeName == nodeName {
+			ready, containerReadiness := pod.Ready()
 
-		status := consulApi.HealthCritical
-		if ready {
-			status = consulApi.HealthPassing
-		}
+			status := consulApi.HealthCritical
+			if ready {
+				status = consulApi.HealthPassing
+			}
 
-		notesB, err := json.MarshalIndent(containerReadiness, "", "  ")
-		if err != nil {
-			panic(err)
-		}
+			notesB, err := json.MarshalIndent(containerReadiness, "", "  ")
+			if err != nil {
+				panic(err)
+			}
 
-		for _, serviceName := range pod.GetServiceNames() {
-			// If the service exists, then we just need to update
-			if consulService, ok := consulServices[pod.GetServiceID(serviceName)]; ok && !pod.HasChange(consulService) {
-				// only call update if we are past halflife of last update
-				if pod.SyncStatuses.GetStatus(serviceName).LastUpdated.IsZero() || time.Now().Sub(pod.SyncStatuses.GetStatus(serviceName).LastUpdated) >= (pod.CheckTTL/2) {
-					// If the service already exists, just update the check
-					pod.SyncStatuses.GetStatus(serviceName).SetError(
-						d.consulClient.Agent().UpdateTTL(
-							pod.GetServiceID(serviceName), string(notesB), pod.GetServiceHealth(serviceName, status)))
-				}
-			} else {
-				// Define the base metadata that katalog-sync requires
-				meta := map[string]string{
-					"external-source":    "kubernetes",                                               // Define the source of this service; see https://github.com/hashicorp/consul/blob/fc1d9e5d78749edc55249e5e7c1a8f7a24add99d/website/source/docs/platform/k8s/service-sync.html.md#service-meta
-					ConsulSyncSourceName: ConsulSyncSourceValue,                                      // Mark this as katalog-sync so we know we generated this
-					ConsulK8sLinkName:    podCacheKey(pod.ObjectMeta.Namespace, pod.ObjectMeta.Name), // which includes full path to this (ns, pod name, etc.)
-					ConsulK8sNamespace:   pod.ObjectMeta.Namespace,
-					ConsulK8sPod:         pod.ObjectMeta.Name,
-				}
-				// Add in any metadata that the pod annotations define
-				for k, v := range pod.GetServiceMeta(serviceName) {
-					if _, ok := meta[k]; !ok {
-						meta[k] = v
+			for _, serviceName := range pod.GetServiceNames() {
+				// If the service exists, then we just need to update
+				if consulService, ok := consulServices[pod.GetServiceID(serviceName)]; ok && !pod.HasChange(consulService) {
+					// only call update if we are past halflife of last update
+					if pod.SyncStatuses.GetStatus(serviceName).LastUpdated.IsZero() || time.Now().Sub(pod.SyncStatuses.GetStatus(serviceName).LastUpdated) >= (pod.CheckTTL/2) {
+						// If the service already exists, just update the check
+						pod.SyncStatuses.GetStatus(serviceName).SetError(
+							d.consulClient.Agent().UpdateTTL(
+								pod.GetServiceID(serviceName), string(notesB), pod.GetServiceHealth(serviceName, status)))
 					}
-				}
-				// Next we actually register the service with consul
-				pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().ServiceRegister(&consulApi.AgentServiceRegistration{
-					ID:      pod.GetServiceID(serviceName),
-					Name:    serviceName,
-					Port:    pod.GetPort(serviceName),
-					Address: pod.Status.PodIP,
-					Meta:    meta,
-					Tags:    pod.GetTags(serviceName),
+				} else {
+					// Define the base metadata that katalog-sync requires
+					meta := map[string]string{
+						"external-source":    "kubernetes",                                               // Define the source of this service; see https://github.com/hashicorp/consul/blob/fc1d9e5d78749edc55249e5e7c1a8f7a24add99d/website/source/docs/platform/k8s/service-sync.html.md#service-meta
+						ConsulSyncSourceName: ConsulSyncSourceValue,                                      // Mark this as katalog-sync so we know we generated this
+						ConsulK8sLinkName:    podCacheKey(pod.ObjectMeta.Namespace, pod.ObjectMeta.Name), // which includes full path to this (ns, pod name, etc.)
+						ConsulK8sNamespace:   pod.ObjectMeta.Namespace,
+						ConsulK8sPod:         pod.ObjectMeta.Name,
+					}
+					// Add in any metadata that the pod annotations define
+					for k, v := range pod.GetServiceMeta(serviceName) {
+						if _, ok := meta[k]; !ok {
+							meta[k] = v
+						}
+					}
+					// Next we actually register the service with consul
+					pod.SyncStatuses.GetStatus(serviceName).SetError(d.consulClient.Agent().ServiceRegister(&consulApi.AgentServiceRegistration{
+						ID:      pod.GetServiceID(serviceName),
+						Name:    serviceName,
+						Port:    pod.GetPort(serviceName),
+						Address: pod.Status.PodIP,
+						Meta:    meta,
+						Tags:    pod.GetTags(serviceName),
 
-					Check: &consulApi.AgentServiceCheck{
-						CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path
-						TTL:     pod.CheckTTL.String(),
-						Status: pod.GetServiceHealth(serviceName, status),  // Current status of check
-						Notes:  string(notesB), // Map of container->ready
-					},
-				}))
+						Check: &consulApi.AgentServiceCheck{
+							CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path
+							TTL:     pod.CheckTTL.String(),
+							Status:  pod.GetServiceHealth(serviceName, status), // Current status of check
+							Notes:   string(notesB),                            // Map of container->ready
+						},
+					}))
+				}
 			}
 		}
 	}

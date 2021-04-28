@@ -73,6 +73,11 @@ spec:
         name: katalog-sync-daemon
       hostNetwork: true
       terminationGracePeriodSeconds: 5
+      env:
+      - name: NODE_NAME
+        valueFrom:
+          fieldRef:
+            fieldPath: spec.nodeName
       tolerations:
       - key: CriticalAddonsOnly
         operator: Exists
