@@ -379,6 +379,7 @@ func (d *Daemon) waitPod(pod *Pod) {
 			pod.HandleReadinessGate()
 			return
 		}
+		time.Sleep(time.Second) // TODO; exponential backoff
 	}
 }
 
