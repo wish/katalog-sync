@@ -349,7 +349,7 @@ func (p *Pod) HandleReadinessGate() error {
 			ourCondition.Message = fmt.Sprintf("The following services haven't been synced to consul yet: %s", notSyncedServices)
 		} else {
 			// check that this ended up in consul as well
-			if p.InitialSyncDone {
+			if p.OutstandingReadinessGate && p.InitialSyncDone {
 				ourCondition.Status = corev1.ConditionTrue
 				ourCondition.Reason = "Done"
 				ourCondition.Message = "Done"
