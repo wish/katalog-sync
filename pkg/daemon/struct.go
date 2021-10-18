@@ -23,19 +23,19 @@ const ReadinessGateType = "katalog-sync.wish.com/synced" // name of readiness ga
 
 var (
 	// Annotation names
-	ConsulServiceNames        = "katalog-sync.wish.com/service-names"     // comma-separated list of service names
-	ConsulServicePort         = "katalog-sync.wish.com/service-port"      // port to use for consul entry
-	ConsulServicePortOverride = "katalog-sync.wish.com/service-port-"     // port override to use for a specific service name
-	ConsulServiceTags         = "katalog-sync.wish.com/service-tags"      // tags for the service
-	ConsulServiceTagsOverride = "katalog-sync.wish.com/service-tags-"     // tags override to use for a specific service name
-	ConsulServiceMeta         = "katalog-sync.wish.com/service-meta"      // meta for the service
-	ConsulServiceMetaOverride = "katalog-sync.wish.com/service-meta-"     // meta override to use for a specific service name
-	ConsulServiceHealth       = "katalog-sync.wish.com/service-health"    // health status for the service (passing/warning/critical)
-	ConsulServiceHealthOverride = "katalog-sync.wish.com/service-health-" // health status override
-	SidecarName               = "katalog-sync.wish.com/sidecar"           // Name of sidecar container, only to be set if it exists
-	SyncInterval              = "katalog-sync.wish.com/sync-interval"     // How frequently we want to sync this service
-	ConsulServiceCheckTTL     = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
-	ContainerExclusion        = "katalog-sync.wish.com/container-exclude" // comma-separated list of containers to exclude from ready check
+	ConsulServiceNames          = "katalog-sync.wish.com/service-names"     // comma-separated list of service names
+	ConsulServicePort           = "katalog-sync.wish.com/service-port"      // port to use for consul entry
+	ConsulServicePortOverride   = "katalog-sync.wish.com/service-port-"     // port override to use for a specific service name
+	ConsulServiceTags           = "katalog-sync.wish.com/service-tags"      // tags for the service
+	ConsulServiceTagsOverride   = "katalog-sync.wish.com/service-tags-"     // tags override to use for a specific service name
+	ConsulServiceMeta           = "katalog-sync.wish.com/service-meta"      // meta for the service
+	ConsulServiceMetaOverride   = "katalog-sync.wish.com/service-meta-"     // meta override to use for a specific service name
+	ConsulServiceHealth         = "katalog-sync.wish.com/service-health"    // health status for the service (passing/warning/critical)
+	ConsulServiceHealthOverride = "katalog-sync.wish.com/service-health-"   // health status override
+	SidecarName                 = "katalog-sync.wish.com/sidecar"           // Name of sidecar container, only to be set if it exists
+	SyncInterval                = "katalog-sync.wish.com/sync-interval"     // How frequently we want to sync this service
+	ConsulServiceCheckTTL       = "katalog-sync.wish.com/service-check-ttl" // TTL for the service checks we put in consul
+	ContainerExclusion          = "katalog-sync.wish.com/container-exclude" // comma-separated list of containers to exclude from ready check
 )
 
 // NewPod returns a daemon pod based on a config and a k8s pod
@@ -209,7 +209,7 @@ func (p *Pod) GetServiceHealth(n string, defaultVal string) string {
 		healthStr = p.Pod.ObjectMeta.Annotations[ConsulServiceHealth]
 	}
 	switch healthStr {
-	case consulApi.HealthCritical, consulApi.HealthPassing,  consulApi.HealthWarning:
+	case consulApi.HealthCritical, consulApi.HealthPassing, consulApi.HealthWarning:
 		return healthStr
 	case "": // annotation not set
 	default:

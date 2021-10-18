@@ -442,8 +442,8 @@ func (d *Daemon) syncConsul() error {
 					Check: &consulApi.AgentServiceCheck{
 						CheckID: pod.GetServiceID(serviceName), // TODO: better name? -- the name cannot have `/` in it -- its used in the API query path
 						TTL:     pod.CheckTTL.String(),
-						Status: pod.GetServiceHealth(serviceName, status),  // Current status of check
-						Notes:  string(notesB), // Map of container->ready
+						Status:  pod.GetServiceHealth(serviceName, status), // Current status of check
+						Notes:   string(notesB),                            // Map of container->ready
 					},
 				}))
 			}
