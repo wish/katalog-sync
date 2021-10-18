@@ -326,7 +326,10 @@ func (d *Daemon) fetchK8s() error {
 				logrus.Errorf("error creating local state for pod: %v", err)
 			} else {
 				d.localK8sState[key] = p
-				go d.waitPod(p)
+				// If there is an outstanding readinessGate we need to register a wait for remote syncing
+				if p.OutstandingReadinessGate {
+					go d.waitPod(p)
+				}
 				// Create readiness gate
 				p.HandleReadinessGate()
 			}
