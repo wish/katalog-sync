@@ -349,33 +349,38 @@ func (d *Daemon) fetchK8s() error {
 
 // Background goroutine to wait for a pod to be ready in consul; once done set "InitialSyncDone"
 func (d *Daemon) waitPod(pod *Pod) {
+	syncedRemotely := false
 	for {
 		select {
 		case <-pod.Ctx.Done():
 			return
 		default:
 		}
-		// The goal here is to ensure that the registration has propogated to the rest of the cluster
-		nodeName, err := d.consulClient.Agent().NodeName()
-		if err != nil {
-			time.Sleep(time.Second) // TODO; exponential backoff
-			continue                // retry
-		}
-		opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
-		if err := d.ConsulNodeDoUntil(pod.Ctx, nodeName, opts, func(node *consulApi.CatalogNode) bool {
-			synced := true
-			for _, serviceName := range pod.GetServiceNames() {
-				// If the service exists, then we just need to update
-				if _, ok := node.Services[pod.GetServiceID(serviceName)]; !ok {
-					synced = false
-				}
+		// If we haven't ensured the service is synced remotely; wait on that
+		if !syncedRemotely {
+			// The goal here is to ensure that the registration has propogated to the rest of the cluster
+			nodeName, err := d.consulClient.Agent().NodeName()
+			if err != nil {
+				time.Sleep(time.Second) // TODO; exponential backoff
+				continue                // retry
 			}
-			return synced
-		}); err != nil {
-			time.Sleep(time.Second) // TODO; exponential backoff
-			continue                // retry
-		}
 
+			opts := &consulApi.QueryOptions{AllowStale: true, UseCache: true}
+			if err := d.ConsulNodeDoUntil(pod.Ctx, nodeName, opts, func(node *consulApi.CatalogNode) bool {
+				synced := true
+				for _, serviceName := range pod.GetServiceNames() {
+					// If the service exists, then we just need to update
+					if _, ok := node.Services[pod.GetServiceID(serviceName)]; !ok {
+						synced = false
+					}
+				}
+				return synced
+			}); err != nil {
+				time.Sleep(time.Second) // TODO; exponential backoff
+				continue                // retry
+			}
+			syncedRemotely = true
+		}
 		if ready, _ := pod.Ready(); ready {
 			pod.InitialSyncDone = true
 			// trigger a handle of readiness gate to avoid the poll delay.
