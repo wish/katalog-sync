@@ -350,11 +350,20 @@ func (d *Daemon) fetchK8s() error {
 // Background goroutine to wait for a pod to be ready in consul; once done set "InitialSyncDone"
 func (d *Daemon) waitPod(pod *Pod) {
 	syncedRemotely := false
+	changesCh := pod.WaitChanges()
+	changesCh <- struct{}{} // Seed a single change
 	for {
+		// wait for a change in pod state or the pod to stop
 		select {
 		case <-pod.Ctx.Done():
 			return
-		default:
+		case _, ok := <-changesCh:
+			// If the channel closed (we were too slow) we want to re-subscribe
+			if !ok {
+				changesCh = pod.WaitChanges()
+				continue
+			}
+
 		}
 		// If we haven't ensured the service is synced remotely; wait on that
 		if !syncedRemotely {

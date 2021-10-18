@@ -128,6 +128,16 @@ type Pod struct {
 	Cancel       context.CancelFunc
 
 	l sync.Mutex
+
+	waitCh []chan struct{}
+}
+
+func (p *Pod) WaitChanges() chan struct{} {
+	ch := make(chan struct{}, 5)
+	p.l.Lock()
+	p.waitCh = append(p.waitCh, ch)
+	p.l.Unlock()
+	return ch
 }
 
 // HasChange will return whether a change has been made that needs a full resync
@@ -157,7 +167,21 @@ func (p *Pod) GetServiceID(serviceName string) string {
 
 // UpdatePod updates the k8s pod
 func (p *Pod) UpdatePod(k8sPod corev1.Pod) {
+	p.l.Lock()
+	defer p.l.Unlock()
 	p.Pod = k8sPod
+
+	// notify waiters
+	for i, ch := range p.waitCh {
+		select {
+		case ch <- struct{}{}:
+			continue
+		default:
+			close(ch)
+			copy(p.waitCh[i:], p.waitCh[i+1:])
+			p.waitCh = p.waitCh[:len(p.waitCh)-1]
+		}
+	}
 }
 
 // GetServiceNames returns the list of service names defined in the k8s annotations
