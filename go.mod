@@ -3,7 +3,7 @@ module github.com/wish/katalog-sync
 go 1.16
 
 require (
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/hashicorp/consul v1.4.2
 	github.com/hashicorp/go-cleanhttp v0.0.0-20171218145408-d5fe4b57a186 // indirect
 	github.com/hashicorp/go-msgpack v1.1.5 // indirect
