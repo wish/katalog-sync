@@ -20,3 +20,8 @@ FROM golang:alpine
 
 COPY --from=builder /go/src/github.com/wish/katalog-sync/cmd/katalog-sync-daemon/katalog-sync-daemon /bin/katalog-sync-daemon
 COPY --from=builder /go/src/github.com/wish/katalog-sync/cmd/katalog-sync-sidecar/katalog-sync-sidecar /bin/katalog-sync-sidecar
+
+ARG USER=katalog-sync
+ENV HOME /home/$USER
+RUN addgroup -S $USER && adduser -S -G $USER -u 12345 $USER
+USER $USER
